@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🍱 밥친구 조편성</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Pretendard', 'Apple SD Gothic Neo', '맑은 고딕', 'Malgun Gothic', sans-serif;
+      background: linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 50%, #eff6ff 100%);
+      color: #1f2937;
+      min-height: 100vh;
+      padding: 28px 20px 60px;
+    }
+
+    .wrap { max-width: 1180px; margin: 0 auto; }
+
+    /* ── 헤더 ── */
+    header {
+      text-align: center;
+      margin-bottom: 22px;
+    }
+    header h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; }
+    header p { margin-top: 6px; color: #6b7280; font-size: 14px; }
+
+    /* ── 툴바 ── */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 26px;
+    }
+    .btn {
+      border: none;
+      border-radius: 12px;
+      padding: 11px 20px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .08s ease, box-shadow .2s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: #7c6cf6; color: #fff; }
+    .btn-primary:hover { box-shadow: 0 4px 14px rgba(124,108,246,.35); }
+    .btn-confirm { background: #34c08b; color: #fff; }
+    .btn-confirm:hover { box-shadow: 0 4px 14px rgba(52,192,139,.35); }
+    .btn-ghost { background: #fff; color: #374151; }
+    .btn-ghost:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+
+    .status {
+      text-align: center;
+      font-size: 13px;
+      color: #6b7280;
+      margin: -14px 0 22px;
+      min-height: 18px;
+    }
+    .status b { color: #7c6cf6; }
+    .status .warn { color: #ef4444; font-weight: 700; }
+
+    .weekctl { text-align: center; font-size: 13px; color: #6b7280; margin-bottom: 14px; }
+    .weekctl input { padding: 6px 9px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; }
+    .week-range {
+      text-align: center; font-size: 17px; font-weight: 800; color: #4338ca;
+      margin-bottom: 16px; letter-spacing: -0.3px;
+    }
+    .week-range .label { color: #9ca3af; font-weight: 600; font-size: 13px; margin-left: 6px; }
+
+    /* 되돌리기 토스트 */
+    .undobar {
+      position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+      background: #1f2937; color: #fff; border-radius: 12px;
+      padding: 11px 14px 11px 18px; display: none; align-items: center; gap: 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.25); z-index: 100; font-size: 14px;
+    }
+    .undobar button {
+      border: none; background: #7c6cf6; color: #fff; font-weight: 700;
+      padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+    }
+    .undobar .close { background: transparent; color: #9ca3af; padding: 4px 6px; }
+
+    /* ── 멤버 상태 패널 ── */
+    .panel {
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin-bottom: 22px;
+      box-shadow: 0 4px 14px rgba(31,41,55,.08);
+    }
+    .members-head {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 18px; flex-wrap: wrap;
+    }
+    .members-head h2 { font-size: 20px; font-weight: 800; }
+    .panel-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .panel-add input {
+      flex: 0 0 180px;
+      padding: 9px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      font-size: 14px;
+      outline: none;
+    }
+    .panel-add input:focus { border-color: #7c6cf6; }
+    .panel-add select {
+      padding: 9px 10px; border: 1px solid #e5e7eb; border-radius: 10px;
+      font-size: 14px; outline: none; background: #fff; cursor: pointer;
+    }
+    .panel-hint { color: #9ca3af; font-size: 12px; }
+
+    /* 멤버 리스트 (팀별 그룹) */
+    .memberlist {
+      columns: 2;
+      column-gap: 26px;
+    }
+    @media (max-width: 720px) { .memberlist { columns: 1; } }
+    .dept-group { break-inside: avoid; margin-bottom: 16px; }
+    .dept-title {
+      font-size: 12px; font-weight: 800; color: #7c6cf6;
+      letter-spacing: .3px; padding: 4px 2px; margin-bottom: 4px;
+      border-bottom: 2px solid #ede9fe;
+    }
+    .mrow {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 4px; border-bottom: 1px solid #f3f4f6;
+    }
+    .mrow .nm { font-size: 14px; }
+    .mrow .nm.lead { font-weight: 700; }
+    .mrow .crown { font-size: 12px; }
+    .mrow.out .nm { color: #b0b6bf; text-decoration: line-through; }
+    .mrow select {
+      margin-left: auto; font-size: 12px; padding: 4px 6px;
+      border-radius: 8px; border: 1px solid #e5e7eb; cursor: pointer; outline: none;
+    }
+    .mrow select.in    { background: #eef2ff; color: #4338ca; }
+    .mrow select.leave { background: #f3f4f6; color: #6b7280; }
+    .mrow select.salad { background: #ecfdf5; color: #059669; }
+    .mrow .del { color: #cbd5e1; cursor: pointer; font-size: 13px; margin-left: 4px; }
+    .mrow .del:hover { color: #ef4444; }
+    .leadtog {
+      border: none; background: #f1f3f5; border-radius: 8px;
+      padding: 3px 7px; cursor: pointer; font-size: 12px; line-height: 1;
+      filter: grayscale(1); opacity: .35; transition: all .12s ease;
+    }
+    .leadtog:hover { opacity: .7; }
+    .leadtog.on {
+      background: #fff7e6; filter: none; opacity: 1;
+      box-shadow: 0 0 0 1.5px #fcd34d inset;
+    }
+
+    .lead-summary {
+      font-size: 13px; color: #6b7280; margin-bottom: 14px;
+      padding: 8px 12px; background: #faf9ff; border-radius: 10px;
+    }
+    .lead-summary b { color: #b45309; }
+    .lead-summary .warn { color: #ef4444; font-weight: 700; }
+
+    /* ── 엔도가이드 ── */
+    .guide-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .guide-form input, .guide-form select {
+      padding: 9px 12px; border: 1px solid #e5e7eb; border-radius: 10px;
+      font-size: 14px; outline: none; background: #fff;
+    }
+    .guide-form input:focus { border-color: #7c6cf6; }
+    .guide-form #gName { flex: 0 0 160px; }
+    .guide-form #gWalk { flex: 0 0 90px; }
+    .guide-form #gMenu { flex: 0 0 150px; }
+    .guide-form #gReview { flex: 1 1 200px; }
+    .guide-form #gLink { flex: 1 1 220px; }
+    .guide-form select { cursor: pointer; }
+
+    .star-input { font-size: 20px; cursor: pointer; user-select: none; letter-spacing: 2px; }
+    .star-input span { color: #e5e7eb; transition: color .08s; }
+    .star-input span.on { color: #fbbf24; }
+
+    .guide-filter { display: flex; flex-wrap: wrap; gap: 7px; margin: 4px 0 18px; }
+    .fchip {
+      padding: 7px 14px; border-radius: 999px; font-size: 13px; cursor: pointer;
+      background: #fff; color: #6b7280; border: 1.5px solid #e5e7eb; font-weight: 600;
+    }
+    .fchip.active { background: #7c6cf6; color: #fff; border-color: #7c6cf6; }
+
+    .guide-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    }
+    @media (max-width: 900px) { .guide-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .guide-grid { grid-template-columns: 1fr; } }
+    .rcard {
+      background: #fff; border-radius: 16px; padding: 16px;
+      box-shadow: 0 4px 14px rgba(31,41,55,.07);
+      display: flex; flex-direction: column; gap: 6px; position: relative;
+    }
+    .rcard .rcat {
+      align-self: flex-start; font-size: 11px; font-weight: 700;
+      padding: 2px 9px; border-radius: 999px; background: #ede9fe; color: #6d28d9;
+    }
+    .rcard .rname { font-size: 17px; font-weight: 800; }
+    .rcard .rstars { color: #fbbf24; font-size: 15px; letter-spacing: 1px; }
+    .rcard .rstars .num { color: #9ca3af; font-size: 12px; margin-left: 4px; }
+    .rcard .rmeta { font-size: 13px; color: #374151; }
+    .rcard .rmeta .price { color: #059669; font-weight: 700; }
+    .rcard .rreview { font-size: 13px; color: #6b7280; font-style: italic; }
+    .rcard .ract { display: flex; gap: 8px; margin-top: 6px; }
+    .rcard .rlink {
+      font-size: 12px; font-weight: 700; color: #03c75a; text-decoration: none;
+      border: 1.5px solid #03c75a; border-radius: 8px; padding: 5px 10px;
+    }
+    .rcard .rlink:hover { background: #03c75a; color: #fff; }
+    .rcard .rdel {
+      position: absolute; top: 12px; right: 14px; color: #cbd5e1;
+      cursor: pointer; font-size: 14px;
+    }
+    .rcard .rdel:hover { color: #ef4444; }
+    .guide-empty { color: #9ca3af; text-align: center; padding: 40px; grid-column: 1/-1; }
+
+    /* ── 조별 점심 회의실 ── */
+    .card-head .team-btn {
+      margin-left: auto; border: none; background: rgba(255,255,255,.6);
+      border-radius: 8px; cursor: pointer; font-size: 13px; padding: 2px 7px;
+    }
+    .card-head .team-btn:hover { background: #fff; }
+    #capture.exporting .team-btn { display: none; }
+    .card-head { justify-content: flex-start; }
+
+    .name-bar { font-size: 13px; color: #6b7280; }
+    .name-bar select {
+      padding: 6px 9px; border: 1px solid #e5e7eb; border-radius: 8px;
+      font-size: 13px; cursor: pointer; outline: none;
+    }
+    .team-members { margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .team-members .tm {
+      background: #ede9fe; color: #6d28d9; border-radius: 999px;
+      padding: 4px 11px; font-size: 13px; font-weight: 600;
+    }
+    .team-members .tm.lead::before { content: '👑 '; }
+
+    .team-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 760px) { .team-wrap { grid-template-columns: 1fr; } }
+    .team-col { background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 4px 14px rgba(31,41,55,.07); }
+    .team-sec-title { font-size: 15px; font-weight: 800; margin-bottom: 12px; }
+    .team-sec-title .hint-sm { font-size: 12px; font-weight: 400; color: #9ca3af; }
+
+    .cand-add { display: flex; gap: 8px; margin-bottom: 14px; }
+    .cand-add select { flex: 1; padding: 9px 10px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; outline: none; }
+
+    .cand {
+      border: 1px solid #f1f3f5; border-radius: 12px; padding: 12px;
+      margin-bottom: 10px; position: relative;
+    }
+    .cand.top { border-color: #fcd34d; background: #fffdf5; }
+    .cand .cname { font-weight: 700; font-size: 15px; }
+    .cand .cname .crown-top { color: #f59e0b; font-size: 12px; margin-left: 6px; }
+    .cand .cmeta { font-size: 12px; color: #6b7280; margin: 3px 0 8px; }
+    .cand .cmeta .price { color: #059669; font-weight: 700; }
+    .cand .reacts { display: flex; flex-wrap: wrap; gap: 6px; }
+    .react {
+      border: 1px solid #e5e7eb; background: #fff; border-radius: 999px;
+      padding: 4px 10px; font-size: 13px; cursor: pointer; user-select: none;
+    }
+    .react:hover { border-color: #7c6cf6; }
+    .react.mine { background: #ede9fe; border-color: #c7d2fe; }
+    .react .rc { font-weight: 700; margin-left: 3px; color: #4338ca; }
+    .cand .cdel { position: absolute; top: 10px; right: 12px; color: #cbd5e1; cursor: pointer; font-size: 13px; }
+    .cand .cdel:hover { color: #ef4444; }
+    .cand .clink { font-size: 11px; color: #03c75a; text-decoration: none; margin-left: 8px; }
+
+    .chatbox {
+      height: 320px; overflow-y: auto; background: #f9fafb; border-radius: 12px;
+      padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;
+    }
+    .msg { max-width: 80%; }
+    .msg .who { font-size: 11px; color: #9ca3af; margin-bottom: 2px; }
+    .msg .bubble { background: #fff; border-radius: 12px; padding: 7px 11px; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,.05); display: inline-block; }
+    .msg.me { align-self: flex-end; text-align: right; }
+    .msg.me .bubble { background: #7c6cf6; color: #fff; }
+    .chat-empty { color: #cbd5e1; text-align: center; margin: auto; font-size: 13px; }
+    .chat-input { display: flex; gap: 8px; }
+    .chat-input input { flex: 1; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; outline: none; }
+    .chat-input input:focus { border-color: #7c6cf6; }
+
+    /* 드래그 */
+    .member[draggable=true] { cursor: grab; }
+    .member.dragging { opacity: .4; }
+    .card.dragover { outline: 2px dashed #7c6cf6; outline-offset: -2px; }
+    .member .x {
+      color: #cbd5e1;
+      font-size: 14px;
+      cursor: pointer;
+      padding: 0 2px;
+    }
+    .member .x:hover { color: #ef4444; }
+    .member .arrow { color: #2563eb; font-size: 12px; }
+
+    /* ── 캡처 영역 ── */
+    #capture {
+      background: linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 50%, #eff6ff 100%);
+      border-radius: 20px;
+      padding: 24px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+    }
+    @media (max-width: 980px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 620px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+
+    /* ── 조 카드 ── */
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(31,41,55,.07);
+      display: flex;
+      flex-direction: column;
+    }
+    .card-head {
+      padding: 12px 14px;
+      font-weight: 800;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .card-body { padding: 10px 14px 14px; }
+    .member {
+      padding: 7px 4px;
+      font-size: 14px;
+      border-bottom: 1px dashed #eef0f3;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .member:last-child { border-bottom: none; }
+    .member .crown { font-size: 13px; }
+    .member.leader { font-weight: 700; }
+    .member.is-new { color: #ef4444; font-weight: 700; }
+    .member.is-moved { color: #2563eb; font-weight: 700; }
+    .member .rt { margin-left: auto; display: flex; align-items: center; gap: 5px; }
+    .badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 6px;
+    }
+    .badge-new { background: #fee2e2; color: #ef4444; }
+    .badge-moved { background: #dbeafe; color: #2563eb; }
+
+    /* ── 메모 ── */
+    .memo {
+      margin-top: 18px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #ef4444;
+      box-shadow: 0 2px 8px rgba(31,41,55,.06);
+    }
+    .memo b { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>🍱 밥친구 조편성</h1>
+      <p id="subtitle">이번 주 점심 밥친구를 자동으로 묶어드려요</p>
+    </header>
+
+    <!-- ══ 조편성 뷰 ══ -->
+    <div id="view-main">
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="generate()">🔀 조 생성</button>
+        <button class="btn btn-confirm" onclick="confirmWeek()">✅ 이번 주 확정</button>
+        <button class="btn btn-ghost" onclick="showView('members')">👥 멤버 관리</button>
+        <button class="btn btn-ghost" onclick="showView('guide')">🍽️ 엔도가이드</button>
+        <button class="btn btn-ghost" onclick="saveImage()">📷 이미지 저장</button>
+        <button class="btn btn-ghost" onclick="resetHistory()">♻️ 기록 초기화</button>
+      </div>
+      <div class="status" id="status"></div>
+      <div class="weekctl">📅 주 시작(월) <input type="date" id="weekStart" onchange="updateWeekRange(); saveState();"></div>
+
+      <div id="capture">
+        <div class="week-range" id="weekRange"></div>
+        <div class="grid" id="grid"></div>
+        <div class="memo" id="memo" contenteditable="true" spellcheck="false"
+             onblur="saveState()"
+             title="클릭해서 직접 수정하세요">최선호: 생산팀 신입으로 오늘 첫 출근입니다.</div>
+      </div>
+    </div>
+
+    <!-- ══ 멤버 관리 뷰 ══ -->
+    <div id="view-members" style="display:none">
+      <div class="members-head">
+        <button class="btn btn-ghost" onclick="showView('main')">← 조편성으로</button>
+        <h2>👥 멤버 관리</h2>
+        <span class="panel-hint">상태를 바꾸면 다음 조 생성·현재 편성에 반영돼요</span>
+      </div>
+      <div class="panel">
+        <div class="panel-add">
+          <input id="newName" type="text" placeholder="중도합류 이름"
+                 onkeydown="if(event.key==='Enter')addPerson()">
+          <select id="newDept"></select>
+          <button class="btn btn-confirm" onclick="addPerson()">➕ 추가</button>
+        </div>
+        <div class="lead-summary" id="leadSummary"></div>
+        <div class="memberlist" id="memberlist"></div>
+      </div>
+    </div>
+
+    <!-- ══ 엔도가이드 뷰 ══ -->
+    <div id="view-guide" style="display:none">
+      <div class="members-head">
+        <button class="btn btn-ghost" onclick="showView('main')">← 조편성으로</button>
+        <h2>🍽️ 엔도가이드</h2>
+        <span class="panel-hint">우리가 직접 만드는 회사 주변 맛집 가이드</span>
+      </div>
+
+      <div class="panel">
+        <div class="guide-form">
+          <input id="gName" type="text" placeholder="식당 이름 *">
+          <select id="gCat"></select>
+          <select id="gPrice">
+            <option value="₩">₩ (1만 이하)</option>
+            <option value="₩₩">₩₩ (1~2만)</option>
+            <option value="₩₩₩">₩₩₩ (2만 이상)</option>
+          </select>
+          <input id="gWalk" type="number" min="0" placeholder="도보(분)">
+          <input id="gMenu" type="text" placeholder="대표 메뉴 (예: 김치찜)">
+          <div class="star-input" id="gStars" title="별점">
+            <span data-v="1">★</span><span data-v="2">★</span><span data-v="3">★</span><span data-v="4">★</span><span data-v="5">★</span>
+          </div>
+          <input id="gReview" type="text" placeholder="한줄평">
+          <input id="gLink" type="text" placeholder="네이버지도 링크 (비우면 이름으로 자동 검색)">
+          <button class="btn btn-confirm" onclick="addRestaurant()">➕ 맛집 추가</button>
+        </div>
+      </div>
+
+      <div class="guide-filter" id="guideFilter"></div>
+      <div class="guide-grid" id="guideGrid"></div>
+    </div>
+
+    <!-- ══ 조별 점심 회의실 뷰 ══ -->
+    <div id="view-team" style="display:none">
+      <div class="members-head">
+        <button class="btn btn-ghost" onclick="showView('main')">← 조편성으로</button>
+        <h2 id="teamTitle">점심 회의실</h2>
+        <span class="name-bar">나: <select id="myName" onchange="setMyName(this.value)"></select></span>
+      </div>
+      <div class="team-members" id="teamMembers"></div>
+
+      <div class="team-wrap">
+        <div class="team-col">
+          <div class="team-sec-title">🍽️ 식당 후보 <span class="hint-sm">— 엔도가이드에서 추천</span></div>
+          <div class="cand-add">
+            <select id="candPick"></select>
+            <button class="btn btn-confirm" onclick="addCandidate()">＋ 후보 추가</button>
+          </div>
+          <div id="candList"></div>
+        </div>
+        <div class="team-col">
+          <div class="team-sec-title">💬 채팅</div>
+          <div class="chatbox" id="chatBox"></div>
+          <div class="chat-input">
+            <input id="chatText" type="text" placeholder="메시지 입력"
+                   onkeydown="if(event.key==='Enter')sendChat()">
+            <button class="btn btn-primary" onclick="sendChat()">보내기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 되돌리기 토스트 -->
+  <div class="undobar" id="undobar">
+    <span id="undoMsg"></span>
+    <button onclick="doUndo()">↩ 되돌리기</button>
+    <button class="close" onclick="hideUndo()">✕</button>
+  </div>
+
+<script>
+  // ══════════════════════════════════════════════
+  // Supabase 연결 설정 — 아래 두 칸을 채우면 클라우드 공유 모드로 전환
+  // (비워두면 지금처럼 localStorage 단독 모드로 동작)
+  // ══════════════════════════════════════════════
+  const SUPABASE_URL = 'https://nhzhzppblzwkmwsgxeqf.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oemh6cHBibHp3a213c2d4ZXFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NTU2NDQsImV4cCI6MjA5NzQzMTY0NH0.6e6Te4uzaBvub7eXdiiM3SFO2zfcldzM3ljd4Zt3Cfw';
+  const USE_CLOUD = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+  const sb = USE_CLOUD ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+  // ──────────────────────────────────────────────
+  // 명단/데이터는 Supabase에서 로드 (아래 캐시에 보관, 화면은 캐시에서 렌더)
+  //  - ROSTER: members 테이블  { id, name, dept, leader, lead_count }
+  //  - 변경은 캐시 갱신 + DB 반영(write-through)
+  // ──────────────────────────────────────────────
+  let ROSTER = [];
+  let leadCountCache = {};    // {이름: 팀장 누적 횟수}  (members.lead_count)
+  let pairHistCache = [];     // [주차][...'A|B']  (pair_history 최근 2주)
+  let guideCache = [];        // restaurants
+  const NEW_NAMES = new Set();// 이번 세션에 추가한 중도합류자 (신규 배지·삭제용)
+  let suppressStateSave = false; // 원격 수신으로 갱신 중일 때 재저장 방지
+
+  // 조별 파스텔 색 (헤더 배경 / 글씨)
+  const PALETTE = [
+    ['#ede9fe', '#6d28d9'], ['#fce7f3', '#be185d'], ['#dbeafe', '#1d4ed8'],
+    ['#dcfce7', '#15803d'], ['#fef3c7', '#b45309'], ['#e0f2fe', '#0369a1'],
+    ['#ffe4e6', '#be123c'], ['#f3e8ff', '#7e22ce'], ['#d1fae5', '#047857'],
+    ['#fae8ff', '#a21caf'], ['#fff7ed', '#c2410c'], ['#ecfeff', '#0e7490'],
+  ];
+
+  // ── Fisher-Yates 셔플 ──
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // ── 저장소: Supabase (캐시 읽기 + write-through) ──
+  function loadLeadCount() { return leadCountCache; }
+  function loadPairHistory() { return pairHistCache; }
+
+  // ── 페어 유틸 ──
+  const pairKey = (a, b) => [a, b].sort().join('|');
+
+  // 한 편성 안의 모든 동석 페어 집합
+  function pairsOfGroups(groups) {
+    const set = new Set();
+    groups.forEach(g => {
+      const names = g.members.map(m => m.name);
+      for (let i = 0; i < names.length; i++)
+        for (let j = i + 1; j < names.length; j++)
+          set.add(pairKey(names[i], names[j]));
+    });
+    return set;
+  }
+
+  // 회피 대상: 직전 2주 "모두" 같은 조였던 페어 (= 3주 연속 방지)
+  function bannedPairs() {
+    const hist = loadPairHistory();
+    if (hist.length < 2) return new Set();
+    const [w1, w2] = hist.slice(-2).map(w => new Set(w));
+    const banned = new Set();
+    w2.forEach(p => { if (w1.has(p)) banned.add(p); });
+    return banned;
+  }
+
+  function countViolations(groups, banned) {
+    if (!banned.size) return 0;
+    let v = 0;
+    pairsOfGroups(groups).forEach(p => { if (banned.has(p)) v++; });
+    return v;
+  }
+
+  let lastViolations = 0, lastBannedCount = 0;
+
+  // ── 조 편성: 조당 4~5명 고정, 팀장 공평 로테이션, 3주연속 페어 회피 ──
+  // 주의: 미리보기이므로 카운트/기록은 건드리지 않음 (확정 시에만 저장)
+  function makeGroups(roster) {
+    const leaderPool = roster.filter(p => p.leader);
+    const members = roster.filter(p => !p.leader);
+    const total = roster.length;
+
+    // 조당 4~5명이 되도록 조 개수 산정
+    let groupCount = Math.max(1, Math.round(total / 4.5));
+    groupCount = Math.min(groupCount, leaderPool.length, Math.ceil(total / 4));
+
+    // 공평 로테이션: 그동안 팀장 적게 한 사람 우선, 동률은 랜덤
+    const counts = loadLeadCount();
+    const ranked = shuffle(leaderPool)
+      .sort((a, b) => (counts[a.name] || 0) - (counts[b.name] || 0));
+    const chosen = ranked.slice(0, groupCount);   // 이번 주 팀장
+    const benched = ranked.slice(groupCount);      // 이번 주엔 일반 멤버로
+
+    // 회피 대상 페어를 최소화하도록 셔플 재시도
+    const banned = bannedPairs();
+    lastBannedCount = banned.size;
+    let best = null, bestV = Infinity;
+    for (let attempt = 0; attempt < 400; attempt++) {
+      const groups = chosen.map((l, i) => ({ no: i + 1, members: [{ ...l, isLeader: true }] }));
+      const pool = shuffle(members.concat(benched));
+      pool.forEach((p, idx) => groups[idx % groupCount].members.push({ ...p }));
+      const v = countViolations(groups, banned);
+      if (v < bestV) { bestV = v; best = groups; }
+      if (v === 0) break;
+    }
+    lastViolations = bestV;
+    return best;
+  }
+
+  let currentGroups = [];
+  const STATUS = {};   // 이름 -> 'in' | 'leave' | 'salad'  (이번 주 상태, 기본 in)
+  let dragName = null;
+
+  // ── Supabase 쓰기 에러 로깅 헬퍼 ──
+  async function dbErr(promise) {
+    try { const { error } = await promise; if (error) console.error('Supabase:', error.message); return error; }
+    catch (e) { console.error('Supabase:', e); return e; }
+  }
+  function weekStartValue() { return document.getElementById('weekStart')?.value || null; }
+
+  // ── 공유 보드(app_state) 저장: 현재 편성/상태/메모/주 ──
+  let saveTimer = null;
+  function saveState() {
+    if (suppressStateSave) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      const memo = (document.getElementById('memo')?.innerText || '').trim();
+      dbErr(sb.from('app_state').update({
+        groups: currentGroups, status: STATUS, memo, week_start: weekStartValue(),
+        updated_at: new Date().toISOString(),
+      }).eq('id', 1));
+    }, 250);  // 연속 변경 디바운스
+  }
+
+  // ── 되돌리기(undo) ──
+  let undoTimer = null;
+  function showUndo(msg, restore) {
+    const bar = document.getElementById('undobar');
+    document.getElementById('undoMsg').textContent = msg;
+    bar._restore = restore;
+    bar.style.display = 'flex';
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(hideUndo, 8000);
+  }
+  function hideUndo() { document.getElementById('undobar').style.display = 'none'; }
+  function doUndo() {
+    const bar = document.getElementById('undobar');
+    if (bar._restore) bar._restore();
+    hideUndo();
+  }
+
+  // 편성/상태 스냅샷 (되돌리기용)
+  function snapshotGroups() {
+    return {
+      groups: JSON.parse(JSON.stringify(currentGroups)),
+      status: { ...STATUS },
+    };
+  }
+  function restoreGroups(s) {
+    currentGroups = JSON.parse(JSON.stringify(s.groups));
+    Object.keys(STATUS).forEach(k => delete STATUS[k]);
+    Object.assign(STATUS, s.status);
+    render(currentGroups); renderPanel(); updateStatus();
+  }
+
+  function render(groups) {
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    groups.forEach((g, gi) => {
+      const [bg, fg] = PALETTE[gi % PALETTE.length];
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      // 드롭 대상
+      card.ondragover = e => { e.preventDefault(); card.classList.add('dragover'); };
+      card.ondragleave = () => card.classList.remove('dragover');
+      card.ondrop = e => { e.preventDefault(); card.classList.remove('dragover'); dropOn(g.no); };
+
+      const head = document.createElement('div');
+      head.className = 'card-head';
+      head.style.background = bg;
+      head.style.color = fg;
+      const ttl = document.createElement('span');
+      ttl.textContent = `🍱 ${g.no}조 (${g.members.length})`;
+      head.appendChild(ttl);
+      const tbtn = document.createElement('button');
+      tbtn.className = 'team-btn';
+      tbtn.textContent = '💬 회의실';
+      tbtn.title = `${g.no}조 점심 회의실`;
+      tbtn.onclick = e => { e.stopPropagation(); openTeam(g.no); };
+      head.appendChild(tbtn);
+      card.appendChild(head);
+
+      const body = document.createElement('div');
+      body.className = 'card-body';
+      g.members.forEach(m => {
+        const row = document.createElement('div');
+        row.className = 'member';
+        row.draggable = true;
+        if (m.isLeader) row.classList.add('leader');
+        if (m.isNew) row.classList.add('is-new');
+        if (m.isMoved) row.classList.add('is-moved');
+        row.ondragstart = () => { dragName = m.name; row.classList.add('dragging'); };
+        row.ondragend = () => { dragName = null; row.classList.remove('dragging'); };
+        row.innerHTML =
+          (m.isLeader ? '<span class="crown">👑</span>' : '') +
+          `<span>${m.name}</span>` +
+          '<span class="rt">' +
+            (m.isMoved ? '<span class="arrow">↗</span><span class="badge badge-moved">이동</span>' : '') +
+            (m.isNew ? '<span class="badge badge-new">신규</span>' : '') +
+          '</span>';
+        body.appendChild(row);
+      });
+      card.appendChild(body);
+      grid.appendChild(card);
+    });
+  }
+
+  // ── 현재 편성 부분 수정 (재셔플 없이) ──
+  function findMember(name) {
+    for (const g of currentGroups) {
+      const i = g.members.findIndex(m => m.name === name);
+      if (i >= 0) return { g, i, m: g.members[i] };
+    }
+    return null;
+  }
+  function smallestGroup() {
+    return currentGroups.reduce((a, b) => b.members.length < a.members.length ? b : a);
+  }
+  function addToGroups(person) {
+    if (currentGroups.length) smallestGroup().members.push(person);
+  }
+  function removeFromGroups(name) {
+    const f = findMember(name);
+    if (f) f.g.members.splice(f.i, 1);
+  }
+
+  // 드래그로 다른 조로 이동 → '이동' 표시
+  function dropOn(groupNo) {
+    if (!dragName) return;
+    const f = findMember(dragName);
+    const target = currentGroups.find(g => g.no === groupNo);
+    if (!f || !target || target === f.g) return;
+    const snap = snapshotGroups();
+    const movedName = dragName, toNo = target.no;
+    const [m] = f.g.members.splice(f.i, 1);
+    m.isMoved = true;
+    m.isLeader = false;   // 옮긴 사람은 그 조의 팀장이 아님 (중복 방지)
+    target.members.push(m);
+    render(currentGroups);
+    updateStatus();
+    saveState();
+    showUndo(`${movedName} → ${toNo}조 이동`, () => { restoreGroups(snap); saveState(); });
+  }
+
+  function updateStatus() {
+    const el = document.getElementById('status');
+    const weeks = loadPairHistory().length;
+    let msg = `저장된 주차 <b>${weeks}</b>주 · 회피 대상 페어 <b>${lastBannedCount}</b>쌍`;
+    if (lastViolations > 0) {
+      msg += ` · <span class="warn">⚠ 회피 불가 ${lastViolations}쌍 (인원 제약)</span>`;
+    } else if (lastBannedCount > 0) {
+      msg += ` · <span style="color:#34c08b;font-weight:700">✓ 모두 회피됨</span>`;
+    }
+    el.innerHTML = msg;
+  }
+
+  // 이번 주 참여자 (연차/출장/샐러드 제외)
+  function activeRoster() {
+    return ROSTER.filter(p => (STATUS[p.name] || 'in') === 'in');
+  }
+
+  function buildGroups() {
+    currentGroups = makeGroups(activeRoster());
+    currentGroups.forEach(g => g.members.forEach(m => {
+      if (NEW_NAMES.has(m.name)) m.isNew = true;
+    }));
+    render(currentGroups);
+    updateStatus();
+    renderPanel();
+  }
+  function generate() {
+    buildGroups();
+    saveState();   // 공유 보드 반영
+  }
+
+  // ── 멤버 상태 패널 ──
+  // 뷰 전환: 'main'(조편성) / 'members'(멤버 관리)
+  function showView(name) {
+    document.getElementById('view-main').style.display = name === 'main' ? 'block' : 'none';
+    document.getElementById('view-members').style.display = name === 'members' ? 'block' : 'none';
+    document.getElementById('view-guide').style.display = name === 'guide' ? 'block' : 'none';
+    document.getElementById('view-team').style.display = name === 'team' ? 'block' : 'none';
+    if (name !== 'team') { unsubscribeTeam(); currentTeamNo = null; }  // 회의실 떠나면 구독 해제
+    if (name === 'members') { populateDeptSelect(); renderPanel(); }
+    if (name === 'guide') initGuide();
+  }
+
+  const STATUS_LABEL = { in: '참여', leave: '연차·출장', salad: '샐러드팀' };
+
+  // 명단 (이번 세션 추가자는 extra=true → 신규 배지·삭제 가능)
+  function allPeople() {
+    return ROSTER.map(p => ({ ...p, extra: NEW_NAMES.has(p.name) }));
+  }
+  function deptList() {
+    const seen = [];
+    allPeople().forEach(p => { if (!seen.includes(p.dept)) seen.push(p.dept); });
+    return seen;
+  }
+
+  // 드롭다운으로 상태 변경 → 현재 편성에 즉시 반영 + 공유
+  function setStatus(name, value) {
+    const snap = snapshotGroups();
+    const prevLabel = STATUS_LABEL[STATUS[name] || 'in'];
+    STATUS[name] = value;
+    if (value === 'in') {
+      if (!findMember(name)) addToGroups({ name, isNew: NEW_NAMES.has(name) });
+    } else {
+      removeFromGroups(name);
+    }
+    render(currentGroups); renderPanel(); updateStatus(); saveState();
+    showUndo(`${name} 상태 변경 (${prevLabel} → ${STATUS_LABEL[value]})`,
+      () => { restoreGroups(snap); saveState(); });
+  }
+
+  function renderPanel() {
+    const box = document.getElementById('memberlist');
+    if (!box) return;
+    box.innerHTML = '';
+    const people = allPeople();
+    deptList().forEach(dept => {
+      const group = document.createElement('div');
+      group.className = 'dept-group';
+      const title = document.createElement('div');
+      title.className = 'dept-title';
+      const inDept = people.filter(p => p.dept === dept);
+      title.textContent = `${dept} (${inDept.length})`;
+      group.appendChild(title);
+
+      inDept.forEach(p => {
+        const st = STATUS[p.name] || 'in';
+        const row = document.createElement('div');
+        row.className = 'mrow' + (st !== 'in' ? ' out' : '');
+        row.innerHTML =
+          `<button class="leadtog${p.leader ? ' on' : ''}" title="팀장 풀 ${p.leader ? '제외' : '추가'}" onclick="toggleLeader('${p.name}')">👑</button>` +
+          `<span class="nm${p.leader ? ' lead' : ''}">${p.name}${p.extra ? ' <span style="color:#ef4444;font-size:11px">신규</span>' : ''}</span>` +
+          `<select class="${st}" onchange="setStatus('${p.name}', this.value)">` +
+            ['in', 'leave', 'salad'].map(v =>
+              `<option value="${v}"${v === st ? ' selected' : ''}>${STATUS_LABEL[v]}</option>`).join('') +
+          '</select>' +
+          (p.extra ? `<span class="del" title="명단에서 삭제" onclick="removeExtra('${p.name}')">✕</span>` : '');
+        group.appendChild(row);
+      });
+      box.appendChild(group);
+    });
+    renderLeadSummary();
+  }
+
+  // 팀장 풀 토글 → members.is_leader 반영
+  async function toggleLeader(name) {
+    const p = ROSTER.find(x => x.name === name);
+    if (!p) return;
+    p.leader = !p.leader;
+    renderPanel();
+    await dbErr(sb.from('members').update({ is_leader: p.leader }).eq('id', p.id));
+  }
+
+  function renderLeadSummary() {
+    const el = document.getElementById('leadSummary');
+    if (!el) return;
+    const pool = allPeople().filter(p => p.leader).length;
+    const active = activeRoster().length;
+    const need = Math.max(1, Math.min(Math.round(active / 4.5), Math.ceil(active / 4)));
+    let msg = `팀장 풀 <b>${pool}명</b> · 이번 주 필요한 조 ${need}개`;
+    if (pool < need) {
+      msg += ` · <span class="warn">⚠ 팀장이 ${need - pool}명 부족해요</span>`;
+    }
+    el.innerHTML = msg + ' <span style="color:#9ca3af">— 👑 버튼으로 추가/제외</span>';
+  }
+
+  function populateDeptSelect() {
+    const sel = document.getElementById('newDept');
+    if (!sel) return;
+    sel.innerHTML = deptList().map(d => `<option value="${d}">${d}</option>`).join('');
+  }
+
+  // 중도합류 추가 → members에 등록 + 가장 적은 조에 '신규'로 투입
+  async function addPerson() {
+    const inp = document.getElementById('newName');
+    const name = inp.value.trim();
+    if (!name) return;
+    if (ROSTER.some(p => p.name === name)) { alert('이미 명단에 있는 이름이에요.'); return; }
+    const dept = document.getElementById('newDept').value || '기타';
+
+    const { data, error } = await sb.from('members')
+      .insert({ name, dept, is_leader: false }).select().single();
+    if (error) { alert('추가 실패: ' + error.message); return; }
+
+    ROSTER.push({ id: data.id, name, dept, leader: false, lead_count: 0 });
+    NEW_NAMES.add(name);
+    STATUS[name] = 'in';
+    addToGroups({ name, isNew: true });
+    inp.value = '';
+    render(currentGroups); renderPanel(); updateStatus(); saveState();
+  }
+
+  // 추가한 멤버 삭제
+  async function removeExtra(name) {
+    const snap = snapshotGroups();
+    const p = ROSTER.find(x => x.name === name);
+    ROSTER = ROSTER.filter(x => x.name !== name);
+    NEW_NAMES.delete(name);
+    delete STATUS[name];
+    removeFromGroups(name);
+    render(currentGroups); renderPanel(); updateStatus(); saveState();
+    if (p) await dbErr(sb.from('members').delete().eq('id', p.id));
+
+    showUndo(`${name} 삭제`, async () => {
+      const { data } = await sb.from('members')
+        .insert({ name: p.name, dept: p.dept, is_leader: p.leader }).select().single();
+      ROSTER.push({ id: data ? data.id : p.id, name: p.name, dept: p.dept, leader: p.leader, lead_count: 0 });
+      NEW_NAMES.add(name);
+      restoreGroups(snap); saveState();
+    });
+  }
+
+  // 현재 편성을 이번 주로 확정 → 팀장 카운트·페어 기록 저장 (DB)
+  async function confirmWeek() {
+    if (!currentGroups.length) return;
+
+    const leaders = [];
+    currentGroups.forEach(g => g.members.forEach(m => { if (m.isLeader) leaders.push(m.name); }));
+    leaders.forEach(n => leadCountCache[n] = (leadCountCache[n] || 0) + 1);
+
+    const pairs = [...pairsOfGroups(currentGroups)];
+    pairHistCache.push(pairs);
+    while (pairHistCache.length > 2) pairHistCache.shift();
+
+    await Promise.all(leaders.map(n => {
+      const p = ROSTER.find(x => x.name === n);
+      return p ? dbErr(sb.from('members').update({ lead_count: leadCountCache[n] }).eq('id', p.id)) : null;
+    }));
+    await dbErr(sb.from('pair_history').insert({ start_date: weekStartValue(), pairs }));
+    await saveState();
+
+    updateStatus();
+    alert('✅ 이번 주 확정 완료!\n팀장 로테이션과 페어 기록이 저장됐어요(전 직원 공유).\n다음 "조 생성"부터 3주 연속 페어를 피합니다.');
+  }
+
+  async function resetHistory() {
+    if (!confirm('팀장 로테이션 카운트와 페어 기록을 모두 지울까요? (전 직원 공유)')) return;
+    leadCountCache = {}; pairHistCache = [];
+    lastViolations = 0; lastBannedCount = 0;
+    await dbErr(sb.from('members').update({ lead_count: 0 }).neq('id', 0));
+    await dbErr(sb.from('pair_history').delete().neq('id', 0));
+    generate();
+  }
+
+  function saveImage() {
+    const node = document.getElementById('capture');
+    node.classList.add('exporting');   // 💬 버튼 숨김
+    html2canvas(node, { scale: 2, backgroundColor: null }).then(canvas => {
+      node.classList.remove('exporting');
+      const link = document.createElement('a');
+      const d = new Date();
+      const stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      link.download = `밥친구_${stamp}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }).catch(() => node.classList.remove('exporting'));
+  }
+
+  // ══════════════════════════════════════════════
+  // 🍽️ 엔도가이드 (맛집 가이드)
+  // ══════════════════════════════════════════════
+  const CATEGORIES = ['한식', '중식', '일식', '양식', '분식', '고기·구이', '아시안', '카페·디저트', '기타'];
+  let guideFilter = '전체';
+  let gRating = 0;
+  let guideInited = false;
+
+  function loadGuide() { return guideCache; }
+
+  // DB에서 맛집 목록 동기화
+  async function refreshGuide() {
+    const { data, error } = await sb.from('restaurants').select('*').order('rating', { ascending: false });
+    if (!error && data) guideCache = data;
+  }
+
+  function naverLink(r) {
+    if (r.link && r.link.trim()) return r.link.trim();
+    return 'https://map.naver.com/p/search/' + encodeURIComponent(r.name);
+  }
+
+  function initGuide() {
+    if (!guideInited) {
+      document.getElementById('gCat').innerHTML =
+        CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+      const stars = document.getElementById('gStars');
+      stars.querySelectorAll('span').forEach(s => {
+        s.onclick = () => { gRating = +s.dataset.v; paintFormStars(); };
+      });
+      guideInited = true;
+    }
+    renderGuideFilter();
+    renderGuide();
+  }
+
+  function paintFormStars() {
+    document.querySelectorAll('#gStars span').forEach(s => {
+      s.classList.toggle('on', +s.dataset.v <= gRating);
+    });
+  }
+
+  function renderGuideFilter() {
+    const box = document.getElementById('guideFilter');
+    const list = loadGuide() || [];
+    const cats = ['전체'].concat(CATEGORIES.filter(c => list.some(r => r.cat === c)));
+    box.innerHTML = '';
+    cats.forEach(c => {
+      const chip = document.createElement('span');
+      chip.className = 'fchip' + (c === guideFilter ? ' active' : '');
+      const cnt = c === '전체' ? list.length : list.filter(r => r.cat === c).length;
+      chip.textContent = `${c} ${cnt}`;
+      chip.onclick = () => { guideFilter = c; renderGuideFilter(); renderGuide(); };
+      box.appendChild(chip);
+    });
+  }
+
+  function starStr(n) { return '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n); }
+
+  function renderGuide() {
+    const grid = document.getElementById('guideGrid');
+    let list = loadGuide() || [];
+    if (guideFilter !== '전체') list = list.filter(r => r.cat === guideFilter);
+    list = list.slice().sort((a, b) => b.rating - a.rating);
+
+    grid.innerHTML = '';
+    if (!list.length) {
+      grid.innerHTML = '<div class="guide-empty">아직 등록된 맛집이 없어요. 위에서 추가해보세요 🍽️</div>';
+      return;
+    }
+    list.forEach(r => {
+      const card = document.createElement('div');
+      card.className = 'rcard';
+
+      const cat = document.createElement('span');
+      cat.className = 'rcat'; cat.textContent = r.cat;
+      card.appendChild(cat);
+
+      const name = document.createElement('div');
+      name.className = 'rname'; name.textContent = r.name;
+      card.appendChild(name);
+
+      const stars = document.createElement('div');
+      stars.className = 'rstars';
+      stars.innerHTML = `${starStr(r.rating)}<span class="num">${r.rating.toFixed(1)}</span>`;
+      card.appendChild(stars);
+
+      const meta = document.createElement('div');
+      meta.className = 'rmeta';
+      meta.innerHTML = `<span class="price">${r.price}</span>`
+        + (r.walk ? ` · 🚶 ${r.walk}분` : '')
+        + (r.menu ? ` · ${escapeHtml(r.menu)}` : '');
+      card.appendChild(meta);
+
+      if (r.review) {
+        const rev = document.createElement('div');
+        rev.className = 'rreview'; rev.textContent = '“' + r.review + '”';
+        card.appendChild(rev);
+      }
+
+      const act = document.createElement('div');
+      act.className = 'ract';
+      const a = document.createElement('a');
+      a.className = 'rlink'; a.href = naverLink(r); a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = '네이버지도에서 보기';
+      act.appendChild(a);
+      card.appendChild(act);
+
+      const del = document.createElement('span');
+      del.className = 'rdel'; del.title = '삭제'; del.textContent = '✕';
+      del.onclick = () => deleteRestaurant(r.id);
+      card.appendChild(del);
+
+      grid.appendChild(card);
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  async function addRestaurant() {
+    const name = document.getElementById('gName').value.trim();
+    if (!name) { alert('식당 이름을 입력해주세요.'); return; }
+    if (!gRating) { alert('별점을 선택해주세요.'); return; }
+    const row = {
+      name,
+      cat: document.getElementById('gCat').value,
+      price: document.getElementById('gPrice').value,
+      walk: +document.getElementById('gWalk').value || null,
+      menu: document.getElementById('gMenu').value.trim(),
+      rating: gRating,
+      review: document.getElementById('gReview').value.trim(),
+      link: document.getElementById('gLink').value.trim(),
+    };
+    const { error } = await sb.from('restaurants').insert(row);
+    if (error) { alert('추가 실패: ' + error.message); return; }
+    await refreshGuide();
+    ['gName', 'gWalk', 'gMenu', 'gReview', 'gLink'].forEach(id => document.getElementById(id).value = '');
+    gRating = 0; paintFormStars();
+    renderGuideFilter(); renderGuide();
+  }
+
+  async function deleteRestaurant(id) {
+    const target = guideCache.find(r => r.id === id);
+    await dbErr(sb.from('restaurants').delete().eq('id', id));
+    await refreshGuide();
+    renderGuideFilter(); renderGuide();
+    if (target) showUndo(`'${target.name}' 삭제`, async () => {
+      const { name, cat, price, walk, menu, rating, review, link } = target;
+      await dbErr(sb.from('restaurants').insert({ name, cat, price, walk, menu, rating, review, link }));
+      await refreshGuide(); renderGuideFilter(); renderGuide();
+    });
+  }
+
+  // ══════════════════════════════════════════════
+  // 💬 조별 점심 회의실 (Supabase 공유 + 실시간)
+  // ══════════════════════════════════════════════
+  const REACTIONS = ['👍', '😋', '❤️', '👎'];
+  let currentTeamNo = null;
+  let myName = localStorage.getItem('bf_myName') || '';  // 내 이름은 기기별 개인 설정
+  let teamData = { cands: [], chat: [] };
+  let teamChannel = null;
+
+  function teamMembers(no) {
+    const g = currentGroups.find(x => x.no === no);
+    return g ? g.members : [];
+  }
+
+  function setMyName(v) { myName = v; localStorage.setItem('bf_myName', v); renderTeam(); }
+
+  // DB에서 이 조의 후보/투표/채팅 로드
+  async function loadTeamData(no) {
+    const { data: cands } = await sb.from('team_candidates')
+      .select('*').eq('team_no', no).order('created_at');
+    const ids = (cands || []).map(c => c.id);
+    let reacts = [];
+    if (ids.length) {
+      const r = await sb.from('team_reactions').select('*').in('candidate_id', ids);
+      reacts = r.data || [];
+    }
+    const { data: chat } = await sb.from('team_chat')
+      .select('*').eq('team_no', no).order('created_at');
+
+    teamData = {
+      cands: (cands || []).map(c => {
+        const rc = {};
+        reacts.filter(x => x.candidate_id === c.id)
+          .forEach(x => { (rc[x.emoji] || (rc[x.emoji] = [])).push(x.person); });
+        return { id: c.id, restId: c.rest_id, reacts: rc };
+      }),
+      chat: (chat || []).map(m => ({ by: m.author, text: m.text })),
+    };
+  }
+
+  // 실시간 구독 (다른 사람의 후보/투표/채팅 즉시 반영)
+  function subscribeTeam(no) {
+    unsubscribeTeam();
+    teamChannel = sb.channel('team-' + no)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'team_chat', filter: `team_no=eq.${no}` }, onTeamChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'team_candidates', filter: `team_no=eq.${no}` }, onTeamChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'team_reactions' }, onTeamChange)
+      .subscribe();
+  }
+  function unsubscribeTeam() { if (teamChannel) { sb.removeChannel(teamChannel); teamChannel = null; } }
+  async function onTeamChange() {
+    if (currentTeamNo == null) return;
+    await loadTeamData(currentTeamNo);
+    renderCandidates(); renderChat();
+  }
+
+  async function openTeam(no) {
+    currentTeamNo = no;
+    showView('team');
+    const members = teamMembers(no);
+    if (!members.some(m => m.name === myName)) myName = members[0] ? members[0].name : '';
+    await loadTeamData(no);
+    subscribeTeam(no);
+    renderTeam();
+  }
+
+  function renderTeam() {
+    const no = currentTeamNo;
+    if (no == null) return;
+    const members = teamMembers(no);
+    document.getElementById('teamTitle').textContent = `🍱 ${no}조 점심 회의실`;
+
+    // 내 이름 셀렉트
+    const nameSel = document.getElementById('myName');
+    nameSel.innerHTML = members.map(m =>
+      `<option value="${m.name}"${m.name === myName ? ' selected' : ''}>${m.name}</option>`).join('');
+
+    // 멤버 칩
+    document.getElementById('teamMembers').innerHTML = members.map(m =>
+      `<span class="tm${m.isLeader ? ' lead' : ''}">${m.name}</span>`).join('');
+
+    // 후보 추가 드롭다운 (엔도가이드 식당)
+    const guide = loadGuide() || [];
+    const pick = document.getElementById('candPick');
+    pick.innerHTML = guide.length
+      ? guide.map(r => `<option value="${r.id}">${r.name} (${r.cat}${r.walk ? ' · 🚶' + r.walk + '분' : ''})</option>`).join('')
+      : '<option value="">엔도가이드에 식당이 없어요</option>';
+
+    renderCandidates();
+    renderChat();
+  }
+
+  function renderCandidates() {
+    const guide = loadGuide() || [];
+    const box = document.getElementById('candList');
+
+    const sorted = teamData.cands.slice().sort((a, b) =>
+      (b.reacts['👍'] || []).length - (a.reacts['👍'] || []).length);
+
+    box.innerHTML = '';
+    if (!sorted.length) {
+      box.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:10px">아직 후보가 없어요. 위에서 추가해보세요 🍽️</div>';
+      return;
+    }
+    const topThumbs = (sorted[0].reacts['👍'] || []).length;
+    sorted.forEach(c => {
+      const r = guide.find(g => g.id === c.restId) || { name: '(삭제된 식당)', cat: '', price: '', walk: '', link: '' };
+      const thumbs = (c.reacts['👍'] || []).length;
+      const isTop = topThumbs > 0 && thumbs === topThumbs;
+
+      const card = document.createElement('div');
+      card.className = 'cand' + (isTop ? ' top' : '');
+      card.innerHTML =
+        `<div class="cname">${escapeHtml(r.name)}${isTop ? '<span class="crown-top">👑 1위</span>' : ''}` +
+          `<a class="clink" href="${naverLink(r)}" target="_blank" rel="noopener">지도</a></div>` +
+        `<div class="cmeta">${r.cat || ''}${r.price ? ' · <span class="price">' + r.price + '</span>' : ''}${r.walk ? ' · 🚶 ' + r.walk + '분' : ''}${r.menu ? ' · ' + escapeHtml(r.menu) : ''}</div>`;
+
+      const reacts = document.createElement('div');
+      reacts.className = 'reacts';
+      REACTIONS.forEach(emo => {
+        const who = c.reacts[emo] || [];
+        const mine = who.includes(myName);
+        const b = document.createElement('span');
+        b.className = 'react' + (mine ? ' mine' : '');
+        b.innerHTML = `${emo}${who.length ? `<span class="rc">${who.length}</span>` : ''}`;
+        b.title = who.join(', ');
+        b.onclick = () => toggleReaction(c.id, emo);
+        reacts.appendChild(b);
+      });
+      card.appendChild(reacts);
+
+      const del = document.createElement('span');
+      del.className = 'cdel'; del.textContent = '✕'; del.title = '후보 빼기';
+      del.onclick = async () => {
+        const restId = c.restId;
+        await dbErr(sb.from('team_candidates').delete().eq('id', c.id));
+        await loadTeamData(currentTeamNo); renderCandidates();
+        showUndo(`'${r.name}' 후보 제외`, async () => {
+          await dbErr(sb.from('team_candidates').insert({ team_no: currentTeamNo, rest_id: restId }));
+          await loadTeamData(currentTeamNo); renderCandidates();
+        });
+      };
+      card.appendChild(del);
+
+      box.appendChild(card);
+    });
+  }
+
+  async function addCandidate() {
+    const restId = +document.getElementById('candPick').value;
+    if (!restId) return;
+    if (teamData.cands.some(c => c.restId === restId)) { alert('이미 후보에 있어요.'); return; }
+    await dbErr(sb.from('team_candidates').insert({ team_no: currentTeamNo, rest_id: restId }));
+    await loadTeamData(currentTeamNo); renderCandidates();
+  }
+
+  async function toggleReaction(candId, emo) {
+    if (!myName) { alert('먼저 상단에서 "나"를 선택해주세요.'); return; }
+    const c = teamData.cands.find(x => x.id === candId);
+    if (!c) return;
+    const mine = (c.reacts[emo] || []).includes(myName);
+    if (mine) {
+      await dbErr(sb.from('team_reactions').delete()
+        .eq('candidate_id', candId).eq('emoji', emo).eq('person', myName));
+    } else {
+      await dbErr(sb.from('team_reactions').insert({ candidate_id: candId, emoji: emo, person: myName }));
+    }
+    await loadTeamData(currentTeamNo); renderCandidates();
+  }
+
+  function renderChat() {
+    const box = document.getElementById('chatBox');
+    box.innerHTML = '';
+    if (!teamData.chat.length) {
+      box.innerHTML = '<div class="chat-empty">첫 메시지를 남겨보세요 💬</div>';
+      return;
+    }
+    teamData.chat.forEach(m => {
+      const wrap = document.createElement('div');
+      wrap.className = 'msg' + (m.by === myName ? ' me' : '');
+      wrap.innerHTML = `<div class="who">${escapeHtml(m.by)}</div><span class="bubble">${escapeHtml(m.text)}</span>`;
+      box.appendChild(wrap);
+    });
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function sendChat() {
+    if (!myName) { alert('먼저 상단에서 "나"를 선택해주세요.'); return; }
+    const inp = document.getElementById('chatText');
+    const text = inp.value.trim();
+    if (!text) return;
+    inp.value = '';
+    await dbErr(sb.from('team_chat').insert({ team_no: currentTeamNo, author: myName, text }));
+    await loadTeamData(currentTeamNo); renderChat();
+  }
+
+  // ── 주간 날짜 (월~금) ──
+  function kDate(d) {
+    const w = '일월화수목금토'[d.getDay()];
+    return `${d.getMonth() + 1}월 ${d.getDate()}일(${w})`;
+  }
+  function updateWeekRange() {
+    const inp = document.getElementById('weekStart');
+    if (!inp.value) {
+      const t = new Date();
+      const diff = (1 - t.getDay() + 7) % 7;   // 이번/다음 월요일
+      t.setDate(t.getDate() + diff);
+      inp.value = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    }
+    const start = new Date(inp.value + 'T00:00:00');
+    const end = new Date(start); end.setDate(start.getDate() + 4);
+    document.getElementById('weekRange').innerHTML =
+      `${kDate(start)} ~ ${kDate(end)} <span class="label">점심 밥친구</span>`;
+  }
+
+  // ══════════════════════════════════════════════
+  // 부팅: Supabase에서 전부 로드 → 렌더 → 실시간 구독
+  // ══════════════════════════════════════════════
+  function hydrateState(st) {
+    if (!st) { updateWeekRange(); buildGroups(); saveState(); return; }
+    suppressStateSave = true;
+    Object.keys(STATUS).forEach(k => delete STATUS[k]);
+    if (st.status) Object.assign(STATUS, st.status);
+    if (st.week_start) document.getElementById('weekStart').value = st.week_start;
+    updateWeekRange();
+    // 메모: 편집 중이 아니면 갱신
+    const memoEl = document.getElementById('memo');
+    if (typeof st.memo === 'string' && document.activeElement !== memoEl) memoEl.innerText = st.memo;
+    suppressStateSave = false;
+
+    if (st.groups && st.groups.length) {
+      currentGroups = st.groups;
+      render(currentGroups); updateStatus(); renderPanel();
+    } else {
+      buildGroups(); saveState();   // 최초 1회만 생성·저장
+    }
+  }
+
+  async function boot() {
+    if (!USE_CLOUD) { updateWeekRange(); generate(); return; }
+
+    // 1) 명단
+    const { data: members } = await sb.from('members').select('*').eq('active', true).order('id');
+    ROSTER = (members || []).map(m => ({
+      id: m.id, name: m.name, dept: m.dept, leader: m.is_leader, lead_count: m.lead_count,
+    }));
+    leadCountCache = {};
+    ROSTER.forEach(m => { if (m.lead_count) leadCountCache[m.name] = m.lead_count; });
+
+    // 2) 최근 2주 페어 기록
+    const { data: ph } = await sb.from('pair_history')
+      .select('pairs').order('created_at', { ascending: false }).limit(2);
+    pairHistCache = (ph || []).map(r => r.pairs).reverse();
+
+    // 3) 엔도가이드
+    await refreshGuide();
+
+    // 4) 공유 보드
+    const { data: st } = await sb.from('app_state').select('*').eq('id', 1).single();
+    hydrateState(st);
+
+    // 5) 실시간: 공유 보드 + 엔도가이드
+    sb.channel('app_state')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_state', filter: 'id=eq.1' },
+        p => hydrateState(p.new))
+      .subscribe();
+    sb.channel('restaurants')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurants' }, async () => {
+        await refreshGuide();
+        if (document.getElementById('view-guide').style.display !== 'none') { renderGuideFilter(); renderGuide(); }
+      })
+      .subscribe();
+  }
+
+  boot();
+</script>
+</script>
+</body>
+</html>
