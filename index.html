@@ -22,16 +22,40 @@
     /* ── 헤더 ── */
     header {
       text-align: center;
-      margin-bottom: 22px;
+      margin-bottom: 24px;
     }
-    header h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; }
+    header h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
     header p { margin-top: 6px; color: #6b7280; font-size: 14px; }
+
+    /* ── 상단 네비 (텍스트 탭) ── */
+    .nav {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 16px;
+      border-bottom: 1px solid #ece9f6;
+    }
+    .nav-tab {
+      border: none;
+      background: none;
+      padding: 10px 18px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #9ca3af;
+      cursor: pointer;
+      border-bottom: 2.5px solid transparent;
+      margin-bottom: -1px;
+      transition: color .12s ease;
+    }
+    .nav-tab:hover { color: #6b7280; }
+    .nav-tab.active { color: #7c6cf6; border-bottom-color: #7c6cf6; }
 
     /* ── 툴바 ── */
     .toolbar {
       display: flex;
       gap: 10px;
       justify-content: center;
+      align-items: center;
       flex-wrap: wrap;
       margin-bottom: 26px;
     }
@@ -48,10 +72,37 @@
     .btn:active { transform: translateY(1px); }
     .btn-primary { background: #7c6cf6; color: #fff; }
     .btn-primary:hover { box-shadow: 0 4px 14px rgba(124,108,246,.35); }
+    .btn-lg { padding: 14px 30px; font-size: 16px; border-radius: 14px; }
     .btn-confirm { background: #34c08b; color: #fff; }
     .btn-confirm:hover { box-shadow: 0 4px 14px rgba(52,192,139,.35); }
     .btn-ghost { background: #fff; color: #374151; }
     .btn-ghost:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+    /* 보조 동작 버튼 (작고 연하게) */
+    .btn-sub {
+      background: #fff; color: #6b7280; font-weight: 600;
+      padding: 9px 14px; font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    }
+    .btn-sub:hover { color: #374151; box-shadow: 0 3px 10px rgba(0,0,0,.09); }
+
+    /* ⋯ 더보기 (희귀·위험 동작 숨김) */
+    .overflow { position: relative; }
+    .btn-icon {
+      background: #fff; color: #9ca3af; font-weight: 700;
+      padding: 9px 12px; font-size: 15px; line-height: 1; box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    }
+    .btn-icon:hover { color: #374151; }
+    .overflow-menu {
+      display: none; position: absolute; right: 0; top: 110%;
+      background: #fff; border-radius: 10px; padding: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.15); z-index: 50; min-width: 150px;
+    }
+    .overflow-menu.open { display: block; }
+    .overflow-menu button {
+      width: 100%; text-align: left; border: none; background: none;
+      padding: 9px 12px; border-radius: 8px; font-size: 13px; color: #ef4444;
+      cursor: pointer; font-weight: 600;
+    }
+    .overflow-menu button:hover { background: #fef2f2; }
 
     .status {
       text-align: center;
@@ -352,34 +403,57 @@
     .badge-moved { background: #dbeafe; color: #2563eb; }
 
     /* ── 메모 ── */
+    .memo-label {
+      margin: 18px 0 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #7c6cf6;
+    }
+    .memo-label span { color: #9ca3af; font-weight: 400; }
     .memo {
-      margin-top: 18px;
       background: #fff;
+      border: 1.5px dashed #d8d4f0;   /* 편집 가능 표시 */
       border-radius: 12px;
       padding: 12px 16px;
       font-size: 13px;
       color: #ef4444;
       box-shadow: 0 2px 8px rgba(31,41,55,.06);
+      outline: none;
+    }
+    .memo:focus { border-color: #7c6cf6; border-style: solid; }
+    .memo:empty::before {
+      content: attr(data-placeholder);
+      color: #c4c4cc;
     }
     .memo b { color: #ef4444; }
+    /* 이미지 저장 시: 라벨 숨기고 테두리 제거 → 표엔 메모 내용만 */
+    #capture.exporting .memo-label { display: none; }
+    #capture.exporting .memo { border-color: transparent; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <h1>🍱 밥친구 조편성</h1>
-      <p id="subtitle">이번 주 점심 밥친구를 자동으로 묶어드려요</p>
+      <h1>🍱 밥친구</h1>
+      <nav class="nav" id="nav">
+        <button class="nav-tab" data-view="main" onclick="showView('main')">조편성</button>
+        <button class="nav-tab" data-view="members" onclick="showView('members')">멤버 관리</button>
+        <button class="nav-tab" data-view="guide" onclick="showView('guide')">엔도가이드</button>
+      </nav>
     </header>
 
     <!-- ══ 조편성 뷰 ══ -->
     <div id="view-main">
       <div class="toolbar">
-        <button class="btn btn-primary" onclick="generate()">🔀 조 생성</button>
-        <button class="btn btn-confirm" onclick="confirmWeek()">✅ 이번 주 확정</button>
-        <button class="btn btn-ghost" onclick="showView('members')">👥 멤버 관리</button>
-        <button class="btn btn-ghost" onclick="showView('guide')">🍽️ 엔도가이드</button>
-        <button class="btn btn-ghost" onclick="saveImage()">📷 이미지 저장</button>
-        <button class="btn btn-ghost" onclick="resetHistory()">♻️ 기록 초기화</button>
+        <button class="btn btn-primary btn-lg" onclick="generate()">🔀 조 생성</button>
+        <button class="btn btn-sub" onclick="confirmWeek()">✅ 이번 주 확정</button>
+        <button class="btn btn-sub" onclick="saveImage()">📷 이미지 저장</button>
+        <div class="overflow">
+          <button class="btn btn-icon" onclick="toggleOverflow(event)" title="더보기">⋯</button>
+          <div class="overflow-menu" id="overflowMenu">
+            <button onclick="resetHistory(); closeOverflow()">♻️ 기록 초기화</button>
+          </div>
+        </div>
       </div>
       <div class="status" id="status"></div>
       <div class="weekctl">📅 주 시작(월) <input type="date" id="weekStart" onchange="updateWeekRange(); saveState();"></div>
@@ -387,7 +461,9 @@
       <div id="capture">
         <div class="week-range" id="weekRange"></div>
         <div class="grid" id="grid"></div>
+        <div class="memo-label">✏️ 메모 <span>— 클릭해서 수정</span></div>
         <div class="memo" id="memo" contenteditable="true" spellcheck="false"
+             data-placeholder="여기를 클릭해서 메모를 입력하세요"
              onblur="saveState()"
              title="클릭해서 직접 수정하세요">최선호: 생산팀 신입으로 오늘 첫 출근입니다.</div>
       </div>
@@ -396,7 +472,6 @@
     <!-- ══ 멤버 관리 뷰 ══ -->
     <div id="view-members" style="display:none">
       <div class="members-head">
-        <button class="btn btn-ghost" onclick="showView('main')">← 조편성으로</button>
         <h2>👥 멤버 관리</h2>
         <span class="panel-hint">상태를 바꾸면 다음 조 생성·현재 편성에 반영돼요</span>
       </div>
@@ -415,7 +490,6 @@
     <!-- ══ 엔도가이드 뷰 ══ -->
     <div id="view-guide" style="display:none">
       <div class="members-head">
-        <button class="btn btn-ghost" onclick="showView('main')">← 조편성으로</button>
         <h2>🍽️ 엔도가이드</h2>
         <span class="panel-hint">우리가 직접 만드는 회사 주변 맛집 가이드</span>
       </div>
@@ -779,9 +853,25 @@
     document.getElementById('view-guide').style.display = name === 'guide' ? 'block' : 'none';
     document.getElementById('view-team').style.display = name === 'team' ? 'block' : 'none';
     if (name !== 'team') { unsubscribeTeam(); currentTeamNo = null; }  // 회의실 떠나면 구독 해제
+
+    // 상단 네비: 활성 탭 표시 (회의실은 하위 화면이라 네비 숨김)
+    const nav = document.getElementById('nav');
+    nav.style.display = name === 'team' ? 'none' : 'flex';
+    nav.querySelectorAll('.nav-tab').forEach(t =>
+      t.classList.toggle('active', t.dataset.view === name));
+    closeOverflow();
+
     if (name === 'members') { populateDeptSelect(); renderPanel(); }
     if (name === 'guide') initGuide();
   }
+
+  // ⋯ 더보기 메뉴
+  function toggleOverflow(e) {
+    if (e) e.stopPropagation();
+    document.getElementById('overflowMenu').classList.toggle('open');
+  }
+  function closeOverflow() { document.getElementById('overflowMenu')?.classList.remove('open'); }
+  document.addEventListener('click', closeOverflow);
 
   const STATUS_LABEL = { in: '참여', leave: '연차·출장', salad: '샐러드팀' };
 
@@ -1351,6 +1441,7 @@
   }
 
   async function boot() {
+    showView('main');   // 네비 활성 탭 초기화
     if (!USE_CLOUD) { updateWeekRange(); generate(); return; }
 
     // 1) 명단
