@@ -159,9 +159,14 @@
     }
     .panel-add input:focus { border-color: #7c6cf6; }
     .panel-add select {
-      padding: 9px 10px; border: 1px solid #e5e7eb; border-radius: 10px;
+      padding: 0 10px; border: 1px solid #e5e7eb; border-radius: 10px;
       font-size: 14px; outline: none; background: #fff; cursor: pointer;
     }
+    /* 추가 줄 요소 높이 통일 */
+    .panel-add input, .panel-add select, .panel-add .btn {
+      height: 42px; box-sizing: border-box; border-radius: 10px;
+    }
+    .panel-add .btn { padding-top: 0; padding-bottom: 0; }
     .panel-hint { color: #9ca3af; font-size: 12px; }
 
     /* 멤버 리스트 (팀별 그룹) */
@@ -214,7 +219,7 @@
     /* ── 엔도가이드 ── */
     .guide-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .guide-form input, .guide-form select {
-      padding: 9px 12px; border: 1px solid #e5e7eb; border-radius: 10px;
+      padding: 0 12px; border: 1px solid #e5e7eb; border-radius: 10px;
       font-size: 14px; outline: none; background: #fff;
     }
     .guide-form input:focus { border-color: #7c6cf6; }
@@ -224,8 +229,14 @@
     .guide-form #gReview { flex: 1 1 200px; }
     .guide-form #gLink { flex: 1 1 220px; }
     .guide-form select { cursor: pointer; }
+    /* 맛집 추가 줄 요소 높이 통일 */
+    .guide-form input, .guide-form select, .guide-form .btn, .guide-form .star-input {
+      height: 42px; box-sizing: border-box;
+    }
+    .guide-form .btn { padding-top: 0; padding-bottom: 0; }
 
-    .star-input { font-size: 20px; cursor: pointer; user-select: none; letter-spacing: 2px; }
+    .star-input { font-size: 20px; cursor: pointer; user-select: none; letter-spacing: 2px;
+      display: inline-flex; align-items: center; padding: 0 4px; }
     .star-input span { color: #e5e7eb; transition: color .08s; }
     .star-input span.on { color: #fbbf24; }
 
@@ -288,7 +299,7 @@
       background: #ede9fe; color: #6d28d9; border-radius: 999px;
       padding: 4px 11px; font-size: 13px; font-weight: 600;
     }
-    .team-members .tm.lead::before { content: '👑 '; }
+    .team-members .tm.lead::before { content: '💳 '; }
 
     .team-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
     @media (max-width: 760px) { .team-wrap { grid-template-columns: 1fr; } }
@@ -798,7 +809,7 @@
         row.ondragstart = () => { dragName = m.name; row.classList.add('dragging'); };
         row.ondragend = () => { dragName = null; row.classList.remove('dragging'); };
         row.innerHTML =
-          (m.isLeader ? '<span class="crown">👑</span>' : '') +
+          (m.isLeader ? '<span class="crown">💳</span>' : '') +
           `<span>${m.name}</span>` +
           '<span class="rt">' +
             (m.isMoved ? '<span class="arrow">↗</span><span class="badge badge-moved">이동</span>' : '') +
@@ -953,7 +964,7 @@
         const row = document.createElement('div');
         row.className = 'mrow' + (st !== 'in' ? ' out' : '');
         row.innerHTML =
-          `<button class="leadtog${p.leader ? ' on' : ''}" title="팀장 풀 ${p.leader ? '제외' : '추가'}" onclick="toggleLeader('${p.name}')">👑</button>` +
+          `<button class="leadtog${p.leader ? ' on' : ''}" title="팀장 풀 ${p.leader ? '제외' : '추가'}" onclick="toggleLeader('${p.name}')">💳</button>` +
           `<span class="nm${p.leader ? ' lead' : ''}">${p.name}${p.extra ? ' <span style="color:#ef4444;font-size:11px">신규</span>' : ''}</span>` +
           `<select class="${st}" onchange="setStatus('${p.name}', this.value)">` +
             ['in', 'leave', 'salad'].map(v =>
@@ -986,7 +997,7 @@
     if (pool < need) {
       msg += ` · <span class="warn">⚠ 팀장이 ${need - pool}명 부족해요</span>`;
     }
-    el.innerHTML = msg + ' <span style="color:#9ca3af">— 👑 버튼으로 추가/제외</span>';
+    el.innerHTML = msg + ' <span style="color:#9ca3af">— 💳 버튼으로 추가/제외</span>';
   }
 
   function populateDeptSelect() {
@@ -1313,7 +1324,7 @@
       const b = document.createElement('button');
       const recent = m.name === myName;
       if (recent) b.className = 'recent';
-      b.innerHTML = (m.isLeader ? '<span class="crown">👑</span> ' : '') + m.name +
+      b.innerHTML = (m.isLeader ? '<span class="crown">💳</span> ' : '') + m.name +
         (recent ? '<span class="recent-tag">최근 선택</span>' : '');
       b.onclick = () => pickMe(m.name);
       list.appendChild(b);
