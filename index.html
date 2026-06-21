@@ -334,6 +334,31 @@
     .chat-input input { flex: 1; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; outline: none; }
     .chat-input input:focus { border-color: #7c6cf6; }
 
+    /* 입장 시 이름 선택 모달 */
+    .who-modal {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: rgba(31,41,55,.45);
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .who-modal.open { display: flex; }
+    .who-box {
+      background: #fff; border-radius: 18px; padding: 24px;
+      max-width: 420px; width: 100%; box-shadow: 0 20px 50px rgba(0,0,0,.3);
+      text-align: center;
+    }
+    .who-box h3 { font-size: 19px; font-weight: 800; }
+    .who-box p { color: #6b7280; font-size: 13px; margin: 6px 0 18px; }
+    .who-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .who-list button {
+      border: 1.5px solid #e5e7eb; background: #fff; border-radius: 12px;
+      padding: 10px 16px; font-size: 15px; font-weight: 700; cursor: pointer;
+      transition: all .12s ease;
+    }
+    .who-list button:hover { border-color: #7c6cf6; background: #f5f3ff; }
+    .who-list button.recent { border-color: #7c6cf6; background: #ede9fe; color: #6d28d9; }
+    .who-list button .crown { font-size: 13px; }
+    .who-list button .recent-tag { font-size: 10px; color: #7c6cf6; display: block; margin-top: 1px; }
+
     /* 드래그 */
     .member[draggable=true] { cursor: grab; }
     .member.dragging { opacity: .4; }
@@ -549,6 +574,15 @@
     </div>
   </div>
 
+  <!-- 입장 시 "나는 누구" 선택 -->
+  <div class="who-modal" id="whoModal" onclick="if(event.target===this)closeWhoModal()">
+    <div class="who-box">
+      <h3>🙋 나는 누구인가요?</h3>
+      <p>이 조에서 내 이름을 선택하세요 (채팅·투표에 사용)</p>
+      <div class="who-list" id="whoList"></div>
+    </div>
+  </div>
+
   <!-- 되돌리기 토스트 -->
   <div class="undobar" id="undobar">
     <span id="undoMsg"></span>
@@ -746,8 +780,8 @@
       head.appendChild(ttl);
       const tbtn = document.createElement('button');
       tbtn.className = 'team-btn';
-      tbtn.textContent = '💬 회의실';
-      tbtn.title = `${g.no}조 점심 회의실`;
+      tbtn.textContent = '🍽️ 오늘 뭐 먹지';
+      tbtn.title = `${g.no}조 · 오늘 뭐 먹지`;
       tbtn.onclick = e => { e.stopPropagation(); openTeam(g.no); };
       head.appendChild(tbtn);
       card.appendChild(head);
@@ -852,7 +886,7 @@
     document.getElementById('view-members').style.display = name === 'members' ? 'block' : 'none';
     document.getElementById('view-guide').style.display = name === 'guide' ? 'block' : 'none';
     document.getElementById('view-team').style.display = name === 'team' ? 'block' : 'none';
-    if (name !== 'team') { unsubscribeTeam(); currentTeamNo = null; }  // 회의실 떠나면 구독 해제
+    if (name !== 'team') { unsubscribeTeam(); currentTeamNo = null; closeWhoModal(); }  // 떠나면 구독 해제
 
     // 상단 네비: 활성 탭 표시 (회의실은 하위 화면이라 네비 숨김)
     const nav = document.getElementById('nav');
@@ -1266,13 +1300,39 @@
     await loadTeamData(no);
     subscribeTeam(no);
     renderTeam();
+    openWhoModal();   // 입장 시 "나는 누구" 선택
   }
+
+  // 입장 시 이름 선택 모달
+  function openWhoModal() {
+    const members = teamMembers(currentTeamNo);
+    if (!members.length) return;
+    const list = document.getElementById('whoList');
+    list.innerHTML = '';
+    members.forEach(m => {
+      const b = document.createElement('button');
+      const recent = m.name === myName;
+      if (recent) b.className = 'recent';
+      b.innerHTML = (m.isLeader ? '<span class="crown">👑</span> ' : '') + m.name +
+        (recent ? '<span class="recent-tag">최근 선택</span>' : '');
+      b.onclick = () => pickMe(m.name);
+      list.appendChild(b);
+    });
+    document.getElementById('whoModal').classList.add('open');
+  }
+  function pickMe(name) {
+    myName = name;
+    localStorage.setItem('bf_myName', name);
+    closeWhoModal();
+    renderTeam();
+  }
+  function closeWhoModal() { document.getElementById('whoModal').classList.remove('open'); }
 
   function renderTeam() {
     const no = currentTeamNo;
     if (no == null) return;
     const members = teamMembers(no);
-    document.getElementById('teamTitle').textContent = `🍱 ${no}조 점심 회의실`;
+    document.getElementById('teamTitle').textContent = `🍱 ${no}조 · 오늘 뭐 먹지`;
 
     // 내 이름 셀렉트
     const nameSel = document.getElementById('myName');
