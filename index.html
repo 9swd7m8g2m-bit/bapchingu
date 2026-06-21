@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🍱 밥친구 조편성</title>
+  <title>밥친구</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
@@ -459,7 +459,7 @@
 <body>
   <div class="wrap">
     <header>
-      <h1>🍱 밥친구</h1>
+      <h1>밥친구</h1>
       <nav class="nav" id="nav">
         <button class="nav-tab" data-view="main" onclick="showView('main')">조편성</button>
         <button class="nav-tab" data-view="members" onclick="showView('members')">멤버 관리</button>
@@ -470,23 +470,23 @@
     <!-- ══ 조편성 뷰 ══ -->
     <div id="view-main">
       <div class="toolbar">
-        <button class="btn btn-primary btn-lg" onclick="generate()">🔀 조 생성</button>
-        <button class="btn btn-sub" onclick="confirmWeek()">✅ 이번 주 확정</button>
-        <button class="btn btn-sub" onclick="saveImage()">📷 이미지 저장</button>
+        <button class="btn btn-primary btn-lg" onclick="generate()">조 생성</button>
+        <button class="btn btn-sub" onclick="confirmWeek()">이번 주 확정</button>
+        <button class="btn btn-sub" onclick="saveImage()">이미지 저장</button>
         <div class="overflow">
           <button class="btn btn-icon" onclick="toggleOverflow(event)" title="더보기">⋯</button>
           <div class="overflow-menu" id="overflowMenu">
-            <button onclick="resetHistory(); closeOverflow()">♻️ 기록 초기화</button>
+            <button onclick="resetHistory(); closeOverflow()">기록 초기화</button>
           </div>
         </div>
       </div>
       <div class="status" id="status"></div>
-      <div class="weekctl">📅 주 시작(월) <input type="date" id="weekStart" onchange="updateWeekRange(); saveState();"></div>
+      <div class="weekctl">주 시작(월) <input type="date" id="weekStart" onchange="updateWeekRange(); saveState();"></div>
 
       <div id="capture">
         <div class="week-range" id="weekRange"></div>
         <div class="grid" id="grid"></div>
-        <div class="memo-label">✏️ 메모 <span>— 클릭해서 수정</span></div>
+        <div class="memo-label">메모 <span>— 클릭해서 수정</span></div>
         <div class="memo" id="memo" contenteditable="true" spellcheck="false"
              data-placeholder="여기를 클릭해서 메모를 입력하세요"
              onblur="saveState()"
@@ -497,7 +497,7 @@
     <!-- ══ 멤버 관리 뷰 ══ -->
     <div id="view-members" style="display:none">
       <div class="members-head">
-        <h2>👥 멤버 관리</h2>
+        <h2>멤버 관리</h2>
         <span class="panel-hint">상태를 바꾸면 다음 조 생성·현재 편성에 반영돼요</span>
       </div>
       <div class="panel">
@@ -505,7 +505,7 @@
           <input id="newName" type="text" placeholder="중도합류 이름"
                  onkeydown="if(event.key==='Enter')addPerson()">
           <select id="newDept"></select>
-          <button class="btn btn-confirm" onclick="addPerson()">➕ 추가</button>
+          <button class="btn btn-confirm" onclick="addPerson()">추가</button>
         </div>
         <div class="lead-summary" id="leadSummary"></div>
         <div class="memberlist" id="memberlist"></div>
@@ -515,7 +515,7 @@
     <!-- ══ 엔도가이드 뷰 ══ -->
     <div id="view-guide" style="display:none">
       <div class="members-head">
-        <h2>🍽️ 엔도가이드</h2>
+        <h2>엔도가이드</h2>
         <span class="panel-hint">우리가 직접 만드는 회사 주변 맛집 가이드</span>
       </div>
 
@@ -535,7 +535,7 @@
           </div>
           <input id="gReview" type="text" placeholder="한줄평">
           <input id="gLink" type="text" placeholder="네이버지도 링크 (비우면 이름으로 자동 검색)">
-          <button class="btn btn-confirm" onclick="addRestaurant()">➕ 맛집 추가</button>
+          <button class="btn btn-confirm" onclick="addRestaurant()">맛집 추가</button>
         </div>
       </div>
 
@@ -547,22 +547,22 @@
     <div id="view-team" style="display:none">
       <div class="members-head">
         <button class="btn btn-ghost" onclick="showView('main')">← 조편성으로</button>
-        <h2 id="teamTitle">점심 회의실</h2>
+        <h2 id="teamTitle">오늘 뭐 먹지</h2>
         <span class="name-bar">나: <select id="myName" onchange="setMyName(this.value)"></select></span>
       </div>
       <div class="team-members" id="teamMembers"></div>
 
       <div class="team-wrap">
         <div class="team-col">
-          <div class="team-sec-title">🍽️ 식당 후보 <span class="hint-sm">— 엔도가이드에서 추천</span></div>
+          <div class="team-sec-title">식당 후보 <span class="hint-sm">— 엔도가이드에서 추천</span></div>
           <div class="cand-add">
             <select id="candPick"></select>
-            <button class="btn btn-confirm" onclick="addCandidate()">＋ 후보 추가</button>
+            <button class="btn btn-confirm" onclick="addCandidate()">후보 추가</button>
           </div>
           <div id="candList"></div>
         </div>
         <div class="team-col">
-          <div class="team-sec-title">💬 채팅</div>
+          <div class="team-sec-title">채팅</div>
           <div class="chatbox" id="chatBox"></div>
           <div class="chat-input">
             <input id="chatText" type="text" placeholder="메시지 입력"
@@ -577,7 +577,7 @@
   <!-- 입장 시 "나는 누구" 선택 -->
   <div class="who-modal" id="whoModal" onclick="if(event.target===this)closeWhoModal()">
     <div class="who-box">
-      <h3>🙋 나는 누구인가요?</h3>
+      <h3>나는 누구인가요?</h3>
       <p>이 조에서 내 이름을 선택하세요 (채팅·투표에 사용)</p>
       <div class="who-list" id="whoList"></div>
     </div>
@@ -776,11 +776,11 @@
       head.style.background = bg;
       head.style.color = fg;
       const ttl = document.createElement('span');
-      ttl.textContent = `🍱 ${g.no}조 (${g.members.length})`;
+      ttl.textContent = `${g.no}조`;
       head.appendChild(ttl);
       const tbtn = document.createElement('button');
       tbtn.className = 'team-btn';
-      tbtn.textContent = '🍽️ 오늘 뭐 먹지';
+      tbtn.textContent = '오늘 뭐 먹지';
       tbtn.title = `${g.no}조 · 오늘 뭐 먹지`;
       tbtn.onclick = e => { e.stopPropagation(); openTeam(g.no); };
       head.appendChild(tbtn);
@@ -1055,7 +1055,7 @@
     await saveState();
 
     updateStatus();
-    alert('✅ 이번 주 확정 완료!\n팀장 로테이션과 페어 기록이 저장됐어요(전 직원 공유).\n다음 "조 생성"부터 3주 연속 페어를 피합니다.');
+    alert('이번 주 확정 완료!\n팀장 로테이션과 페어 기록이 저장됐어요(전 직원 공유).\n다음 "조 생성"부터 3주 연속 페어를 피합니다.');
   }
 
   async function resetHistory() {
@@ -1147,7 +1147,7 @@
 
     grid.innerHTML = '';
     if (!list.length) {
-      grid.innerHTML = '<div class="guide-empty">아직 등록된 맛집이 없어요. 위에서 추가해보세요 🍽️</div>';
+      grid.innerHTML = '<div class="guide-empty">아직 등록된 맛집이 없어요. 위에서 추가해보세요.</div>';
       return;
     }
     list.forEach(r => {
@@ -1170,7 +1170,7 @@
       const meta = document.createElement('div');
       meta.className = 'rmeta';
       meta.innerHTML = `<span class="price">${r.price}</span>`
-        + (r.walk ? ` · 🚶 ${r.walk}분` : '')
+        + (r.walk ? ` · 도보 ${r.walk}분` : '')
         + (r.menu ? ` · ${escapeHtml(r.menu)}` : '');
       card.appendChild(meta);
 
@@ -1332,7 +1332,7 @@
     const no = currentTeamNo;
     if (no == null) return;
     const members = teamMembers(no);
-    document.getElementById('teamTitle').textContent = `🍱 ${no}조 · 오늘 뭐 먹지`;
+    document.getElementById('teamTitle').textContent = `${no}조 · 오늘 뭐 먹지`;
 
     // 내 이름 셀렉트
     const nameSel = document.getElementById('myName');
@@ -1347,7 +1347,7 @@
     const guide = loadGuide() || [];
     const pick = document.getElementById('candPick');
     pick.innerHTML = guide.length
-      ? guide.map(r => `<option value="${r.id}">${r.name} (${r.cat}${r.walk ? ' · 🚶' + r.walk + '분' : ''})</option>`).join('')
+      ? guide.map(r => `<option value="${r.id}">${r.name} (${r.cat}${r.walk ? ' · 도보' + r.walk + '분' : ''})</option>`).join('')
       : '<option value="">엔도가이드에 식당이 없어요</option>';
 
     renderCandidates();
@@ -1363,7 +1363,7 @@
 
     box.innerHTML = '';
     if (!sorted.length) {
-      box.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:10px">아직 후보가 없어요. 위에서 추가해보세요 🍽️</div>';
+      box.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:10px">아직 후보가 없어요. 위에서 추가해보세요.</div>';
       return;
     }
     const topThumbs = (sorted[0].reacts['👍'] || []).length;
@@ -1375,9 +1375,9 @@
       const card = document.createElement('div');
       card.className = 'cand' + (isTop ? ' top' : '');
       card.innerHTML =
-        `<div class="cname">${escapeHtml(r.name)}${isTop ? '<span class="crown-top">👑 1위</span>' : ''}` +
+        `<div class="cname">${escapeHtml(r.name)}${isTop ? '<span class="crown-top">1위</span>' : ''}` +
           `<a class="clink" href="${naverLink(r)}" target="_blank" rel="noopener">지도</a></div>` +
-        `<div class="cmeta">${r.cat || ''}${r.price ? ' · <span class="price">' + r.price + '</span>' : ''}${r.walk ? ' · 🚶 ' + r.walk + '분' : ''}${r.menu ? ' · ' + escapeHtml(r.menu) : ''}</div>`;
+        `<div class="cmeta">${r.cat || ''}${r.price ? ' · <span class="price">' + r.price + '</span>' : ''}${r.walk ? ' · 도보 ' + r.walk + '분' : ''}${r.menu ? ' · ' + escapeHtml(r.menu) : ''}</div>`;
 
       const reacts = document.createElement('div');
       reacts.className = 'reacts';
@@ -1436,7 +1436,7 @@
     const box = document.getElementById('chatBox');
     box.innerHTML = '';
     if (!teamData.chat.length) {
-      box.innerHTML = '<div class="chat-empty">첫 메시지를 남겨보세요 💬</div>';
+      box.innerHTML = '<div class="chat-empty">첫 메시지를 남겨보세요.</div>';
       return;
     }
     teamData.chat.forEach(m => {
