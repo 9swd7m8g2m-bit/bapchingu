@@ -267,7 +267,13 @@
     .rcard .rmeta { font-size: 13px; color: #374151; }
     .rcard .rmeta .price { color: #059669; font-weight: 700; }
     .rcard .rreview { font-size: 13px; color: #6b7280; font-style: italic; }
-    .rcard .ract { display: flex; gap: 8px; margin-top: 6px; }
+    .rcard .ract { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
+    .rcard .rlike {
+      font-size: 13px; font-weight: 700; color: #ef4444; cursor: pointer;
+      border: 1.5px solid #fad1d1; background: #fff; border-radius: 8px; padding: 5px 11px;
+    }
+    .rcard .rlike:hover { background: #fff5f5; }
+    .rcard .rlike.on { background: #ffe4e6; border-color: #fca5a5; }
     .rcard .rlink {
       font-size: 12px; font-weight: 700; color: #03c75a; text-decoration: none;
       border: 1.5px solid #03c75a; border-radius: 8px; padding: 5px 10px;
@@ -345,7 +351,18 @@
     .chat-input input { flex: 1; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; outline: none; }
     .chat-input input:focus { border-color: #7c6cf6; }
 
+    /* 우측 위 내 이름 칩 */
+    .me-chip {
+      position: fixed; top: 14px; right: 16px; z-index: 80;
+      background: #fff; border: 1px solid #ece9f6; border-radius: 999px;
+      padding: 7px 14px; font-size: 13px; color: #6b7280; cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    }
+    .me-chip:hover { box-shadow: 0 4px 12px rgba(124,108,246,.2); }
+    .me-chip b { color: #7c6cf6; }
+
     /* 입장 시 이름 선택 모달 */
+    .who-list { max-height: 52vh; overflow-y: auto; }
     .who-modal {
       display: none; position: fixed; inset: 0; z-index: 200;
       background: rgba(31,41,55,.45);
@@ -468,6 +485,7 @@
   </style>
 </head>
 <body>
+  <div class="me-chip" id="meChip" onclick="openIdentityPicker()" title="클릭해서 변경">나: <b id="meName">선택</b></div>
   <div class="wrap">
     <header>
       <h1>밥친구</h1>
@@ -1102,10 +1120,23 @@
 
   function loadGuide() { return guideCache; }
 
-  // DB에서 맛집 목록 동기화
+  // DB에서 맛집 목록 + 좋아요 동기화
   async function refreshGuide() {
     const { data, error } = await sb.from('restaurants').select('*').order('rating', { ascending: false });
-    if (!error && data) guideCache = data;
+    if (error || !data) return;
+    const likesRes = await sb.from('restaurant_likes').select('rest_id, person');
+    const likes = likesRes.data || [];
+    guideCache = data.map(r => ({ ...r, likes: likes.filter(l => l.rest_id === r.id).map(l => l.person) }));
+  }
+
+  // 좋아요 토글 (이름 없으면 먼저 선택)
+  async function toggleLike(id) {
+    if (!myName) { openIdentityPicker(() => toggleLike(id)); return; }
+    const r = guideCache.find(x => x.id === id);
+    const liked = (r?.likes || []).includes(myName);
+    if (liked) await dbErr(sb.from('restaurant_likes').delete().eq('rest_id', id).eq('person', myName));
+    else await dbErr(sb.from('restaurant_likes').insert({ rest_id: id, person: myName }));
+    await refreshGuide(); renderGuide();
   }
 
   function naverLink(r) {
@@ -1154,7 +1185,8 @@
     const grid = document.getElementById('guideGrid');
     let list = loadGuide() || [];
     if (guideFilter !== '전체') list = list.filter(r => r.cat === guideFilter);
-    list = list.slice().sort((a, b) => b.rating - a.rating);
+    list = list.slice().sort((a, b) =>
+      b.rating - a.rating || (b.likes?.length || 0) - (a.likes?.length || 0));
 
     grid.innerHTML = '';
     if (!list.length) {
@@ -1193,6 +1225,13 @@
 
       const act = document.createElement('div');
       act.className = 'ract';
+      const likeBtn = document.createElement('button');
+      const liked = (r.likes || []).includes(myName);
+      likeBtn.className = 'rlike' + (liked ? ' on' : '');
+      likeBtn.innerHTML = `♥ ${(r.likes || []).length}`;
+      likeBtn.title = (r.likes || []).join(', ') || '좋아요';
+      likeBtn.onclick = () => toggleLike(r.id);
+      act.appendChild(likeBtn);
       const a = document.createElement('a');
       a.className = 'rlink'; a.href = naverLink(r); a.target = '_blank'; a.rel = 'noopener';
       a.textContent = '네이버지도에서 보기';
@@ -1307,25 +1346,25 @@
     currentTeamNo = no;
     showView('team');
     const members = teamMembers(no);
-    if (!members.some(m => m.name === myName)) myName = members[0] ? members[0].name : '';
     await loadTeamData(no);
     subscribeTeam(no);
     renderTeam();
-    openWhoModal();   // 입장 시 "나는 누구" 선택
+    if (!myName) openWhoModal(members, renderTeam);   // 이름 없을 때만 입장 시 선택
   }
 
-  // 입장 시 이름 선택 모달
-  function openWhoModal() {
-    const members = teamMembers(currentTeamNo);
-    if (!members.length) return;
+  // 이름 선택 모달 (members 목록 + 선택 후 콜백)
+  let whoOnPick = null;
+  function openWhoModal(members, onPick) {
+    if (!members || !members.length) return;
+    whoOnPick = onPick || null;
     const list = document.getElementById('whoList');
     list.innerHTML = '';
     members.forEach(m => {
       const b = document.createElement('button');
       const recent = m.name === myName;
       if (recent) b.className = 'recent';
-      b.innerHTML = (m.isLeader ? '<span class="crown">💳</span> ' : '') + m.name +
-        (recent ? '<span class="recent-tag">최근 선택</span>' : '');
+      b.innerHTML = (m.leader || m.isLeader ? '<span class="crown">💳</span> ' : '') + m.name +
+        (recent ? '<span class="recent-tag">현재 나</span>' : '');
       b.onclick = () => pickMe(m.name);
       list.appendChild(b);
     });
@@ -1334,10 +1373,24 @@
   function pickMe(name) {
     myName = name;
     localStorage.setItem('bf_myName', name);
+    renderMeChip();
     closeWhoModal();
-    renderTeam();
+    const cb = whoOnPick; whoOnPick = null;
+    if (cb) cb();
   }
   function closeWhoModal() { document.getElementById('whoModal').classList.remove('open'); }
+
+  // 우측 위 "나" 칩
+  function renderMeChip() {
+    const el = document.getElementById('meName');
+    if (el) el.textContent = myName || '선택';
+  }
+  // 전체 명단에서 내 이름 고르기 (칩 클릭 / 좋아요 첫 클릭 시)
+  function openIdentityPicker(onPick) {
+    openWhoModal(ROSTER, onPick || (() => {
+      if (document.getElementById('view-guide').style.display !== 'none') renderGuide();
+    }));
+  }
 
   function renderTeam() {
     const no = currentTeamNo;
@@ -1513,6 +1566,7 @@
 
   async function boot() {
     showView('main');   // 네비 활성 탭 초기화
+    renderMeChip();     // 우측 위 "나" 칩
     if (!USE_CLOUD) { updateWeekRange(); generate(); return; }
 
     // 1) 명단
@@ -1540,11 +1594,13 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_state', filter: 'id=eq.1' },
         p => hydrateState(p.new))
       .subscribe();
-    sb.channel('restaurants')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurants' }, async () => {
-        await refreshGuide();
-        if (document.getElementById('view-guide').style.display !== 'none') { renderGuideFilter(); renderGuide(); }
-      })
+    const onGuideChange = async () => {
+      await refreshGuide();
+      if (document.getElementById('view-guide').style.display !== 'none') { renderGuideFilter(); renderGuide(); }
+    };
+    sb.channel('guide')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurants' }, onGuideChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_likes' }, onGuideChange)
       .subscribe();
   }
 
