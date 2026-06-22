@@ -171,18 +171,16 @@
     .panel-add .btn { padding-top: 0; padding-bottom: 0; }
     .panel-hint { color: #9ca3af; font-size: 12px; }
 
-    /* 멤버 리스트 (팀별 그룹) */
-    .memberlist {
-      columns: 2;
-      column-gap: 26px;
-    }
-    @media (max-width: 720px) { .memberlist { columns: 1; } }
-    .dept-group { break-inside: avoid; margin-bottom: 16px; }
+    /* 멤버 리스트 (팀별 아코디언) */
+    .dept-group { margin-bottom: 8px; border: 1px solid #eee; border-radius: 10px; overflow: hidden; }
     .dept-title {
-      font-size: 12px; font-weight: 800; color: #7c6cf6;
-      letter-spacing: .3px; padding: 4px 2px; margin-bottom: 4px;
-      border-bottom: 2px solid #ede9fe;
+      display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;
+      font-size: 13px; font-weight: 700; color: #374151; padding: 11px 14px; background: #faf9ff;
     }
+    .dept-title:hover { background: #f1eefc; }
+    .dept-title .caret { color: #7c6cf6; font-size: 10px; width: 9px; }
+    .dept-title .dept-count { margin-left: auto; color: #9ca3af; font-weight: 600; font-size: 12px; }
+    .dept-body { padding: 2px 12px 6px; }
     .mrow {
       display: flex; align-items: center; gap: 8px;
       padding: 6px 4px; border-bottom: 1px solid #f3f4f6;
@@ -1179,19 +1177,32 @@
       () => { restoreGroups(snap); saveState(); });
   }
 
+  const openDepts = new Set();   // 펼쳐진 팀 (기본: 전부 접힘)
+  function toggleDept(dept) {
+    if (openDepts.has(dept)) openDepts.delete(dept); else openDepts.add(dept);
+    renderPanel();
+  }
+
   function renderPanel() {
     const box = document.getElementById('memberlist');
     if (!box) return;
     box.innerHTML = '';
     const people = allPeople();
     deptList().forEach(dept => {
+      const inDept = people.filter(p => p.dept === dept);
+      const open = openDepts.has(dept);
+
       const group = document.createElement('div');
       group.className = 'dept-group';
       const title = document.createElement('div');
       title.className = 'dept-title';
-      const inDept = people.filter(p => p.dept === dept);
-      title.textContent = `${dept} (${inDept.length})`;
+      title.innerHTML = `<span class="caret">${open ? '▾' : '▸'}</span>${dept}<span class="dept-count">${inDept.length}</span>`;
+      title.onclick = () => toggleDept(dept);
       group.appendChild(title);
+
+      const body = document.createElement('div');
+      body.className = 'dept-body';
+      body.style.display = open ? '' : 'none';
 
       inDept.forEach(p => {
         const st = STATUS[p.name] || 'in';
@@ -1205,8 +1216,9 @@
               `<option value="${v}"${v === st ? ' selected' : ''}>${STATUS_LABEL[v]}</option>`).join('') +
           '</select>' +
           (p.extra ? `<span class="del" title="명단에서 삭제" onclick="removeExtra('${p.name}')">✕</span>` : '');
-        group.appendChild(row);
+        body.appendChild(row);
       });
+      group.appendChild(body);
       box.appendChild(group);
     });
     renderLeadSummary();
