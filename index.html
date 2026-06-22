@@ -171,13 +171,27 @@
     .panel-add .btn { padding-top: 0; padding-bottom: 0; }
     .panel-hint { color: #9ca3af; font-size: 12px; }
 
-    /* 멤버 리스트 (팀별 아코디언) */
+    /* 멤버 리스트 (본부 > 팀 2단 아코디언) */
+    .div-group { margin-bottom: 8px; border: 1px solid #e3def5; border-radius: 12px; overflow: hidden; }
+    .div-title {
+      display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;
+      font-size: 14px; font-weight: 800; color: #4338ca; padding: 13px 14px; background: #ede9fe;
+    }
+    .div-title:hover { background: #e3dcfb; }
+    .div-title .caret { color: #7c6cf6; font-size: 10px; width: 9px; }
+    .div-title .dept-count { margin-left: auto; color: #8b80c9; font-weight: 700; font-size: 12px; }
+    .div-body { padding: 8px 10px; background: #fbfaff; }
+
     .dept-group { margin-bottom: 8px; border: 1px solid #eee; border-radius: 10px; overflow: hidden; }
+    .dept-group:last-child { margin-bottom: 0; }
+    .dept-group.nested { border-color: #eceaf6; }
     .dept-title {
       display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;
-      font-size: 13px; font-weight: 700; color: #374151; padding: 11px 14px; background: #faf9ff;
+      font-size: 13px; font-weight: 700; color: #374151; padding: 10px 14px; background: #faf9ff;
     }
     .dept-title:hover { background: #f1eefc; }
+    .dept-group.nested .dept-title { background: #fff; }
+    .dept-group.nested .dept-title:hover { background: #f6f4fc; }
     .dept-title .caret { color: #7c6cf6; font-size: 10px; width: 9px; }
     .dept-title .dept-count { margin-left: auto; color: #9ca3af; font-weight: 600; font-size: 12px; }
     .dept-body { padding: 2px 12px 6px; }
@@ -1183,42 +1197,87 @@
     renderPanel();
   }
 
+  // 본부(대분류) 구조 — 산하 팀은 한 단계 들어가서 표시
+  const ORG = [
+    { type: 'team', dept: 'CEO' },
+    { type: 'div', name: '기업부설연구소', teams: ['임베디드1팀', '임베디드2팀', '설계1팀', '설계2팀', '설계3팀', '선행기술팀', '생산기술팀', 'IP팀'] },
+    { type: 'team', dept: 'CSO' },
+    { type: 'team', dept: '전략기획팀' },
+    { type: 'team', dept: '인허가팀' },
+    { type: 'team', dept: '세일즈팀' },
+    { type: 'team', dept: '마케팅팀' },
+    { type: 'team', dept: '영업지원팀' },
+    { type: 'div', name: '생산관리본부', teams: ['생산관리팀', '생산팀', 'SCM팀', '생산품질팀'] },
+    { type: 'div', name: '경영관리본부', teams: ['인사총무팀', '회계팀'] },
+  ];
+
+  function memberRow(p) {
+    const st = STATUS[p.name] || 'in';
+    const row = document.createElement('div');
+    row.className = 'mrow' + (st !== 'in' ? ' out' : '');
+    row.innerHTML =
+      `<button class="leadtog${p.leader ? ' on' : ''}" title="팀장 풀 ${p.leader ? '제외' : '추가'}" onclick="toggleLeader('${p.name}')">💳</button>` +
+      `<span class="nm${p.leader ? ' lead' : ''}">${p.name}${p.extra ? ' <span style="color:#ef4444;font-size:11px">신규</span>' : ''}</span>` +
+      `<select class="${st}" onchange="setStatus('${p.name}', this.value)">` +
+        ['in', 'leave', 'salad'].map(v =>
+          `<option value="${v}"${v === st ? ' selected' : ''}>${STATUS_LABEL[v]}</option>`).join('') +
+      '</select>' +
+      (p.extra ? `<span class="del" title="명단에서 삭제" onclick="removeExtra('${p.name}')">✕</span>` : '');
+    return row;
+  }
+
+  // 팀 아코디언(헤더+멤버) 생성. nested=true면 본부 안 들여쓰기 스타일
+  function teamAccordion(people, dept, nested) {
+    const inDept = people.filter(p => p.dept === dept);
+    if (!inDept.length) return null;
+    const open = openDepts.has(dept);
+    const group = document.createElement('div');
+    group.className = 'dept-group' + (nested ? ' nested' : '');
+    const title = document.createElement('div');
+    title.className = 'dept-title';
+    title.innerHTML = `<span class="caret">${open ? '▾' : '▸'}</span>${dept}<span class="dept-count">${inDept.length}</span>`;
+    title.onclick = () => toggleDept(dept);
+    group.appendChild(title);
+    const body = document.createElement('div');
+    body.className = 'dept-body';
+    body.style.display = open ? '' : 'none';
+    inDept.forEach(p => body.appendChild(memberRow(p)));
+    group.appendChild(body);
+    return group;
+  }
+
   function renderPanel() {
     const box = document.getElementById('memberlist');
     if (!box) return;
     box.innerHTML = '';
     const people = allPeople();
-    deptList().forEach(dept => {
-      const inDept = people.filter(p => p.dept === dept);
-      const open = openDepts.has(dept);
+
+    ORG.forEach(node => {
+      if (node.type === 'team') {
+        const g = teamAccordion(people, node.dept, false);
+        if (g) box.appendChild(g);
+        return;
+      }
+      // 본부(대분류)
+      const key = 'div:' + node.name;
+      const open = openDepts.has(key);
+      const selfPeople = people.filter(p => p.dept === node.name);   // 본부 직속(소장/공장장 등)
+      const total = selfPeople.length + people.filter(p => node.teams.includes(p.dept)).length;
 
       const group = document.createElement('div');
-      group.className = 'dept-group';
+      group.className = 'div-group';
       const title = document.createElement('div');
-      title.className = 'dept-title';
-      title.innerHTML = `<span class="caret">${open ? '▾' : '▸'}</span>${dept}<span class="dept-count">${inDept.length}</span>`;
-      title.onclick = () => toggleDept(dept);
+      title.className = 'div-title';
+      title.innerHTML = `<span class="caret">${open ? '▾' : '▸'}</span>${node.name}<span class="dept-count">${total}</span>`;
+      title.onclick = () => toggleDept(key);
       group.appendChild(title);
 
-      const body = document.createElement('div');
-      body.className = 'dept-body';
-      body.style.display = open ? '' : 'none';
-
-      inDept.forEach(p => {
-        const st = STATUS[p.name] || 'in';
-        const row = document.createElement('div');
-        row.className = 'mrow' + (st !== 'in' ? ' out' : '');
-        row.innerHTML =
-          `<button class="leadtog${p.leader ? ' on' : ''}" title="팀장 풀 ${p.leader ? '제외' : '추가'}" onclick="toggleLeader('${p.name}')">💳</button>` +
-          `<span class="nm${p.leader ? ' lead' : ''}">${p.name}${p.extra ? ' <span style="color:#ef4444;font-size:11px">신규</span>' : ''}</span>` +
-          `<select class="${st}" onchange="setStatus('${p.name}', this.value)">` +
-            ['in', 'leave', 'salad'].map(v =>
-              `<option value="${v}"${v === st ? ' selected' : ''}>${STATUS_LABEL[v]}</option>`).join('') +
-          '</select>' +
-          (p.extra ? `<span class="del" title="명단에서 삭제" onclick="removeExtra('${p.name}')">✕</span>` : '');
-        body.appendChild(row);
-      });
-      group.appendChild(body);
+      const dbody = document.createElement('div');
+      dbody.className = 'div-body';
+      dbody.style.display = open ? '' : 'none';
+      selfPeople.forEach(p => dbody.appendChild(memberRow(p)));   // 직속 인원
+      node.teams.forEach(t => { const g = teamAccordion(people, t, true); if (g) dbody.appendChild(g); });
+      group.appendChild(dbody);
       box.appendChild(group);
     });
     renderLeadSummary();
