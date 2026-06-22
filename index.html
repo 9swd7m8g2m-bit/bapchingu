@@ -457,6 +457,21 @@
     .admin-actions .btn.danger { background: #fff; color: #ef4444; box-shadow: none; border: 1px solid #fad1d1; }
     .admin-actions .btn.danger:hover { background: #fef2f2; }
 
+    /* 멤버 관리 팝업 */
+    .members-modal {
+      display: none; position: fixed; inset: 0; z-index: 205;
+      background: rgba(31,41,55,.45); align-items: center; justify-content: center; padding: 20px;
+    }
+    .members-modal.open { display: flex; }
+    .members-box {
+      background: #fff; border-radius: 18px; padding: 22px;
+      max-width: 640px; width: 100%; max-height: 84vh;
+      display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,.3);
+    }
+    .members-box .members-head { margin-bottom: 4px; }
+    .members-box .members-head .admin-close { margin-left: auto; }
+    .members-box .memberlist { overflow-y: auto; margin-top: 10px; }
+
     /* 입장 시 이름 선택 모달 */
     .who-list { max-height: 52vh; overflow-y: auto; }
     .who-modal {
@@ -586,7 +601,7 @@
       <div class="me-chip" id="meChip" onclick="toggleMeMenu(event)" title="메뉴">나: <b id="meName">선택</b> <span class="caret">▾</span></div>
       <div class="me-menu" id="meMenu">
         <button onclick="openIdentityPicker(); closeMeMenu()">사용자 변경</button>
-        <button onclick="showView('members'); closeMeMenu()">멤버 관리</button>
+        <button onclick="openMembers(); closeMeMenu()">멤버 관리</button>
       </div>
     </div>
     <button class="tr-gear" id="adminToggle" onclick="openAdminModal()" title="관리자 메뉴">⚙</button>
@@ -609,6 +624,26 @@
       </div>
     </div>
   </div>
+
+  <!-- 멤버 관리 팝업 -->
+  <div class="members-modal" id="membersModal" onclick="if(event.target===this)closeMembers()">
+    <div class="members-box">
+      <div class="members-head">
+        <h2>멤버 관리</h2>
+        <span class="admin-close" onclick="closeMembers()">✕</span>
+      </div>
+      <span class="panel-hint">상태를 바꾸면 다음 조 생성·현재 편성에 반영돼요</span>
+      <div class="panel-add">
+        <input id="newName" type="text" placeholder="중도합류 이름"
+               onkeydown="if(event.key==='Enter')addPerson()">
+        <select id="newDept"></select>
+        <button class="btn btn-confirm" onclick="addPerson()">추가</button>
+      </div>
+      <div class="lead-summary" id="leadSummary"></div>
+      <div class="memberlist" id="memberlist"></div>
+    </div>
+  </div>
+
   <div class="wrap">
     <header>
       <h1>밥친구</h1>
@@ -628,24 +663,6 @@
              data-placeholder="여기를 클릭해서 메모를 입력하세요"
              onblur="saveState()"
              title="클릭해서 직접 수정하세요">최선호: 생산팀 신입으로 오늘 첫 출근입니다.</div>
-      </div>
-    </div>
-
-    <!-- ══ 멤버 관리 뷰 ══ -->
-    <div id="view-members" style="display:none">
-      <div class="members-head">
-        <h2>멤버 관리</h2>
-        <span class="panel-hint">상태를 바꾸면 다음 조 생성·현재 편성에 반영돼요</span>
-      </div>
-      <div class="panel">
-        <div class="panel-add">
-          <input id="newName" type="text" placeholder="중도합류 이름"
-                 onkeydown="if(event.key==='Enter')addPerson()">
-          <select id="newDept"></select>
-          <button class="btn btn-confirm" onclick="addPerson()">추가</button>
-        </div>
-        <div class="lead-summary" id="leadSummary"></div>
-        <div class="memberlist" id="memberlist"></div>
       </div>
     </div>
 
@@ -1064,7 +1081,6 @@
   // 뷰 전환: 'main'(조편성) / 'members'(멤버 관리)
   function showView(name) {
     document.getElementById('view-main').style.display = name === 'main' ? 'block' : 'none';
-    document.getElementById('view-members').style.display = name === 'members' ? 'block' : 'none';
     document.getElementById('view-guide').style.display = name === 'guide' ? 'block' : 'none';
     document.getElementById('view-team').style.display = name === 'team' ? 'block' : 'none';
     if (name !== 'team') { unsubscribeTeam(); currentTeamNo = null; closeWhoModal(); }  // 떠나면 구독 해제
@@ -1075,9 +1091,16 @@
     nav.querySelectorAll('.nav-tab').forEach(t =>
       t.classList.toggle('active', t.dataset.view === name));
 
-    if (name === 'members') { populateDeptSelect(); renderPanel(); }
     if (name === 'guide') initGuide();
   }
+
+  // 멤버 관리 팝업
+  function openMembers() {
+    populateDeptSelect();
+    renderPanel();
+    document.getElementById('membersModal').classList.add('open');
+  }
+  function closeMembers() { document.getElementById('membersModal').classList.remove('open'); }
 
   const STATUS_LABEL = { in: '참여', leave: '연차·출장', salad: '샐러드팀' };
 
