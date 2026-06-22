@@ -286,6 +286,11 @@
       cursor: pointer; font-size: 14px;
     }
     .rcard .rdel:hover { color: #ef4444; }
+    .rcard .redit {
+      position: absolute; top: 12px; right: 36px; color: #cbd5e1;
+      cursor: pointer; font-size: 14px;
+    }
+    .rcard .redit:hover { color: #7c6cf6; }
     .guide-empty { color: #9ca3af; text-align: center; padding: 40px; grid-column: 1/-1; }
 
     /* ── 조별 점심 회의실 ── */
@@ -472,6 +477,27 @@
     .members-box .members-head .admin-close { margin-left: auto; }
     .members-box .memberlist { overflow-y: auto; margin-top: 10px; }
 
+    /* 맛집 수정 팝업 */
+    .edit-modal {
+      display: none; position: fixed; inset: 0; z-index: 210;
+      background: rgba(31,41,55,.45); align-items: center; justify-content: center; padding: 20px;
+    }
+    .edit-modal.open { display: flex; }
+    .edit-box {
+      background: #fff; border-radius: 18px; padding: 22px;
+      max-width: 380px; width: 100%; box-shadow: 0 20px 50px rgba(0,0,0,.3);
+      display: flex; flex-direction: column; gap: 9px;
+    }
+    .edit-box input, .edit-box select {
+      border: 1px solid #e5e7eb; border-radius: 10px; padding: 0 12px; height: 42px;
+      font-size: 14px; outline: none; box-sizing: border-box; width: 100%; background: #fff;
+    }
+    .edit-box input:focus, .edit-box select:focus { border-color: #7c6cf6; }
+    .edit-box .erow { display: flex; gap: 8px; }
+    .edit-box .erow select, .edit-box .erow input { flex: 1; }
+    .edit-box .star-input { height: 42px; }
+    .edit-box .btn { height: 42px; margin-top: 4px; }
+
     /* 입장 시 이름 선택 모달 */
     .who-list { max-height: 52vh; overflow-y: auto; }
     .who-modal {
@@ -641,6 +667,30 @@
       </div>
       <div class="lead-summary" id="leadSummary"></div>
       <div class="memberlist" id="memberlist"></div>
+    </div>
+  </div>
+
+  <!-- 맛집 수정 팝업 -->
+  <div class="edit-modal" id="editModal" onclick="if(event.target===this)closeEdit()">
+    <div class="edit-box">
+      <div class="admin-head"><h3>맛집 수정</h3><span class="admin-close" onclick="closeEdit()">✕</span></div>
+      <input id="eName" type="text" placeholder="식당 이름">
+      <div class="erow">
+        <select id="eCat"></select>
+        <select id="ePrice">
+          <option value="₩">₩ (1만 이하)</option>
+          <option value="₩₩">₩₩ (1~2만)</option>
+          <option value="₩₩₩">₩₩₩ (2만 이상)</option>
+        </select>
+        <input id="eWalk" type="number" min="0" placeholder="도보(분)">
+      </div>
+      <input id="eMenu" type="text" placeholder="대표 메뉴">
+      <div class="star-input" id="eStars" title="별점">
+        <span data-v="1">★</span><span data-v="2">★</span><span data-v="3">★</span><span data-v="4">★</span><span data-v="5">★</span>
+      </div>
+      <input id="eReview" type="text" placeholder="한줄평">
+      <input id="eLink" type="text" placeholder="네이버지도 링크">
+      <button class="btn btn-confirm" onclick="saveEdit()">저장</button>
     </div>
   </div>
 
@@ -1405,6 +1455,11 @@
       act.appendChild(a);
       card.appendChild(act);
 
+      const edit = document.createElement('span');
+      edit.className = 'redit'; edit.title = '수정'; edit.textContent = '✎';
+      edit.onclick = () => openEdit(r.id);
+      card.appendChild(edit);
+
       const del = document.createElement('span');
       del.className = 'rdel'; del.title = '삭제'; del.textContent = '✕';
       del.onclick = () => deleteRestaurant(r.id);
@@ -1451,6 +1506,55 @@
       await dbErr(sb.from('restaurants').insert({ name, cat, price, walk, menu, rating, review, link }));
       await refreshGuide(); renderGuideFilter(); renderGuide();
     });
+  }
+
+  // ── 맛집 수정 ──
+  let editingId = null, eRating = 0, editInited = false;
+  function paintEditStars() {
+    document.querySelectorAll('#eStars span').forEach(s =>
+      s.classList.toggle('on', +s.dataset.v <= eRating));
+  }
+  function openEdit(id) {
+    const r = guideCache.find(x => x.id === id);
+    if (!r) return;
+    if (!editInited) {
+      document.getElementById('eCat').innerHTML =
+        CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+      document.querySelectorAll('#eStars span').forEach(s => {
+        s.onclick = () => { eRating = +s.dataset.v; paintEditStars(); };
+      });
+      editInited = true;
+    }
+    editingId = id;
+    document.getElementById('eName').value = r.name || '';
+    document.getElementById('eCat').value = r.cat || '한식';
+    document.getElementById('ePrice').value = r.price || '₩';
+    document.getElementById('eWalk').value = r.walk || '';
+    document.getElementById('eMenu').value = r.menu || '';
+    document.getElementById('eReview').value = r.review || '';
+    document.getElementById('eLink').value = r.link || '';
+    eRating = r.rating || 0; paintEditStars();
+    document.getElementById('editModal').classList.add('open');
+  }
+  function closeEdit() { document.getElementById('editModal').classList.remove('open'); }
+  async function saveEdit() {
+    const name = document.getElementById('eName').value.trim();
+    if (!name) { alert('식당 이름을 입력해주세요.'); return; }
+    if (!eRating) { alert('별점을 선택해주세요.'); return; }
+    const patch = {
+      name,
+      cat: document.getElementById('eCat').value,
+      price: document.getElementById('ePrice').value,
+      walk: +document.getElementById('eWalk').value || null,
+      menu: document.getElementById('eMenu').value.trim(),
+      rating: eRating,
+      review: document.getElementById('eReview').value.trim(),
+      link: document.getElementById('eLink').value.trim(),
+    };
+    const { error } = await sb.from('restaurants').update(patch).eq('id', editingId);
+    if (error) { alert('수정 실패: ' + error.message); return; }
+    closeEdit();
+    await refreshGuide(); renderGuideFilter(); renderGuide();
   }
 
   // ══════════════════════════════════════════════
